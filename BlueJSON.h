@@ -7,37 +7,32 @@ https://abhinavsarkar.net/posts/json-parsing-from-scratch-in-haskell/
 https://lihautan.com/json-parser-with-javascript/
 */
 
-// TODO:
-// * Mudar o nome de várias coisas que tão meio estranhas e erradas (não sei por que mas não to conseguindo pensa em uns nomes boms)
+// TODOs:
 // * Talvez eu tenha que mudar o tipo (que agora ta como long) que representa um "Number"
-// * Se pa que vai precisar de um sistema mais complexo de getters, pra poder pegar values de objects específicos
-// * O ideal é primeiro eu dar um jeito de "parsar" os arquivos em tokes e só depois que isso tiver funcionando certinho eu penso em
-//   como eu vo faze o sistema de identificar o que é o que
 // * Fazer um sistema de checagem de erro com uma função tipo bjson_expect(const char *tokens). Dai, por exemplo, depois de encontrar
 //   o começo de um objeto '{' teria que ter um bjson_expect(""}"), ou seja, ele esperaria que tivesse uma '"' (significando o
 //   começo de uma string), ou um '}' (significando o final do objeto, que no caso seria um objeto vazio), os espaços em branco ' ' 
 //   a função vai ignorar. Como exemplo ver aquele site que checa se o JSON ta certo
-// * Precisa urgentemente dar uma refatorada, principalmente na parte de parsing, pra diminuir a montanha de código repetido inútil que
-//   tem e deixar mais bonito
-// * Vou ter que colocar { } em cada case do switch do parser porque todo o código dentro do switch fica no mesmo contexto. Na real que
-//   acho que a melhor coisa a fazer é trocar de switch-case pra if-else porque dai também daria uma facilitada na refatoração do código 
-// * Já que vão ter varios getters e setters da pra colocar o bjson_object, o bjson_array e o bjson_thing em arquivos separados
+// * Precisa urgentemente dar uma refatorada em praticamente tudo
 // * Aparentemente agora não precisa mais ser só object ou array no parent do arquivo de json, pode ser qualquer tipo de value. Mas claro
 //   que se não for um object ou array só vai ter um value no arquivo inteiro
-// * Desistir de separar em arquivos diferentes e fazer tudo no mesmo arquivo header-only
 // * checar se todos os prefixo dz_ estão devidamente trocados pelo bjson_
-// * Talvez tirar o _ de todos os nomes de coisas em que ele aparece
 // * Dar uma documentada boa em tudo
 // * Fazer uns benchmarks pra procurar lugares que daria pra dar uma otimizada melhor
 // * Criar um repo no github e colocar uma foto de um Blue Jay, também colocar alguma referência a Blue Jay Way. Talvez eu tenha que colocar
 //   créditos das imagens que eu usar
-// * Talvez mudar o nome do projeto pra BlueJSON, já que assim ele vai continuar carregando as referencias ao Gaio Azul e a Blue Jay Way só
-//   que mais sutilmente. Também vai deixar o nome menorzin e mais facil de entender, e dai eu poderia mudar todos os prefixos bjson_ por b
-//   e tirar o _json_ do meio dos nomes
 // * Reduzir ao máximo o número de #includes
 // * Talvez fazer todas as funções de getter (menos as que retornam um objeto, array ou thing) retornarem um código de erro, e mandar o valor
 //   que teria retornado por meio de um pointer passado nos parametros (estilo scanf)
 // * Adicionar uma licença no começo desse arquivo
+
+// TODOs URGENTES:
+// !!! Talvez só mecher com bjson_thing no high-level e deixar os objects e arrays por baixo dos panos, por ex: ao invés de bjson_thing_get_object()
+//     retornar um bjson_object* ela vai rotornar uma bjson_thing* ai a função bjson_object_get_string(bjson_thing *object, ...) vai aceitar a thing 
+//     como classe parametro, o que deixaria tudo mais organizado pq provavelmente reduziria mto a redunância dos getters e setters 
+// !!! Talvez tirar todos os setters e ao invés deles o user vai precisar chamar funções específicas tipo bjson_thing_create_string(const char *string)
+//     que vão retornar um pointer pra bjson_thing criada. Dessa forma se o user quiser mecher em um json que já esteja parsado, ele vai ter que primeiro
+//     destruir a thing que ele quer mudar e alocar a nova no lugar da antiga
 
 #ifndef BJSON_BLUEJSON_H
 #define BJSON_BLUEJSON_H
@@ -53,6 +48,7 @@ typedef struct bjson_array bjson_array;
 
 typedef enum
 {
+    BJSON_NOTHING,
     BJSON_STRING,
     BJSON_NUMBER,
     BJSON_OBJECT,
@@ -100,7 +96,7 @@ void bjson_thing_set_null(bjson_thing *thing);
 bjson_object *bjson_object_create();
 void bjson_object_destroy(bjson_object *object);
 
-bjson_thing *bjson_object_get_thing(bjson_object *object, const char *name);
+bjson_thing *bjson_object_get_thing(bjson_object *object, const char *name); // NOTE: Se o user quiser modificar algo que já esteja em um objeto vai ter que pegar a thing e mudar pelos métodos dela
 char *bjson_object_get_string(bjson_object *object, const char *name, char *buffer, unsigned int size);
 long bjson_object_get_number(bjson_object *object, const char *name);
 bjson_object *bjson_object_get_object(bjson_object *object, const char *name);
@@ -109,8 +105,8 @@ int bjson_object_is_true(bjson_object *object, const char *name);
 int bjson_object_is_false(bjson_object *object, const char *name);
 int bjson_object_is_null(bjson_object *object, const char *name);
 
-// bjson_object_set_...();
-// ...
+// Appends the specified thing to the end of the object things
+void bjson_object_add_thing(bjson_object *object, bjson_thing *thing);
 
 bjson_array *bjson_array_create();
 void bjson_array_destroy(bjson_array *array);
@@ -124,8 +120,8 @@ int bjson_array_is_true(bjson_array *array, unsigned int index);
 int bjson_array_is_false(bjson_array *array, unsigned int index);
 int bjson_array_is_null(bjson_array *array, unsigned int index);
 
-// bjson_array_set_...();
-// ...
+// Appends the specified thing to the end of the array things
+void bjson_array_add_thing(bjson_array *array, bjson_thing *thing);
 
 // Parses the specified n strings
 // Returns the outer-most parent bjson_thing, or NULL on error
@@ -168,7 +164,7 @@ bjson_thing *bjson_thing_create()
 {
     bjson_thing *thing = malloc(sizeof(bjson_thing));
     thing->name = NULL;
-    thing->type = -1; // TODO: Talvez criar um bjson_value_type chamado BJSON_NOTHING ou algo assim, pra facilitar a inicialização
+    thing->type = BJSON_NOTHING;
 
     return thing;
 }
@@ -188,9 +184,24 @@ void bjson_thing_destroy(bjson_thing *thing)
     free(thing);
 }
 
+void bjson_thing_destroy_value(bjson_thing *thing)
+{
+    if (thing->type == BJSON_STRING)
+        free(thing->value.string);
+    else if (thing->type == BJSON_OBJECT)
+        bjson_object_destroy(thing->value.object);
+    else if (thing->type == BJSON_ARRAY)
+        bjson_array_destroy(thing->value.array);
+
+    thing->type = BJSON_NOTHING;
+}
+
 char *bjson_thing_get_name(bjson_thing *thing, char *buffer, unsigned int size)
 {
-    return strncpy(buffer, thing->name, size);
+    strncpy(buffer, thing->name, size);
+    buffer[size - 1] = '\0';
+
+    return buffer;
 }
 
 bjson_value_type bjson_thing_get_value_type(bjson_thing *thing)
@@ -200,7 +211,10 @@ bjson_value_type bjson_thing_get_value_type(bjson_thing *thing)
 
 char *bjson_thing_get_string(bjson_thing *thing, char *buffer, unsigned int size)
 {
-    return strncpy(buffer, thing->value.string, size);
+    strncpy(buffer, thing->value.string, size);
+    buffer[size - 1] = '\0';
+
+    return buffer;
 }
 
 long bjson_thing_get_number(bjson_thing *thing)
@@ -244,47 +258,62 @@ void bjson_thing_set_name(bjson_thing *thing, const char *name)
 
 void bjson_thing_set_string(bjson_thing *thing, const char *string)
 {
-    // TODO: Precisa adicionar mais checks pra não sobreescrever coisas que ja estejam setadas. Talvez o ideal seria só deixar setar coisas caso 
-    //       a thing estja totalmente "limpa", pq se for para pra pensa (caso a thing tenha sido extraida de um json) tem chance de ela ser, por
-    //       exemplo, um bjson_object, ai tu vai setar por cima desse objeto e ele vai ficar perdido na memória. Tem q pelo menos dar um jeito de
-    //       de chamr uma função bjson_thing_clear_value() ou algo do tipo pra dar free caso precise dar free em algo (e isso não só aqui, isso
-    //       precisa ser feito em todos os setters tanto da thing como do object e do array)
+    if (thing->type != BJSON_NOTHING)
+        bjson_thing_destroy_value(thing);
 
     thing->type = BJSON_STRING;
     thing->value.string = malloc(strlen(string) + 1);
-    strcpy(thing->name, string);
+    strcpy(thing->value.string, string);
 }
 
 void bjson_thing_set_number(bjson_thing *thing, long number)
 {
+    if (thing->type != BJSON_NOTHING)
+        bjson_thing_destroy_value(thing);
+
     thing->type = BJSON_NUMBER;
     thing->value.number = number;
 }
 
 void bjson_thing_set_object(bjson_thing *thing, bjson_object *object)
 {
+    if (thing->type != BJSON_NOTHING)
+        bjson_thing_destroy_value(thing);
+
     thing->type = BJSON_OBJECT;
     thing->value.object = object;
 }
 
 void bjson_thing_set_array(bjson_thing *thing, bjson_array *array)
 {
+    if (thing->type != BJSON_NOTHING)
+        bjson_thing_destroy_value(thing);
+
     thing->type = BJSON_ARRAY;
     thing->value.array = array;
 }
 
 void bjson_thing_set_true(bjson_thing *thing)
 {
+    if (thing->type != BJSON_NOTHING)
+        bjson_thing_destroy_value(thing);
+
     thing->type = BJSON_TRUE;
 }
 
 void bjson_thing_set_false(bjson_thing *thing)
 {
+    if (thing->type != BJSON_NOTHING)
+        bjson_thing_destroy_value(thing);
+
     thing->type = BJSON_FALSE;
 }
 
 void bjson_thing_set_null(bjson_thing *thing)
 {
+    if (thing->type != BJSON_NOTHING)
+        bjson_thing_destroy_value(thing);
+
     thing->type = BJSON_NULL;
 }
 
@@ -494,6 +523,13 @@ char *bjson_object_get_string(bjson_object *object, const char *name, char *buff
     return NULL;
 }
 
+long bjson_object_get_number(bjson_object *object, const char *name)
+{
+    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
+
+    return thing->value.number;
+}
+
 bjson_object *bjson_object_get_object(bjson_object *object, const char *name)
 {
     bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
@@ -506,6 +542,32 @@ bjson_array *bjson_object_get_array(bjson_object *object, const char *name)
     bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
 
     return (thing == NULL || thing->type != BJSON_ARRAY) ? NULL : thing->value.array;
+}
+
+int bjson_object_is_true(bjson_object *object, const char *name)
+{
+    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
+
+    return thing->type == BJSON_TRUE;
+}
+
+int bjson_object_is_false(bjson_object *object, const char *name)
+{
+    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
+
+    return thing->type == BJSON_FALSE;
+}
+
+int bjson_object_is_null(bjson_object *object, const char *name)
+{
+    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
+
+    return thing->type == BJSON_NULL;
+}
+
+void bjson_object_add_thing(bjson_object *object, bjson_thing *thing)
+{
+    bjson_thing_list_append(object->things, thing);
 }
 
 struct bjson_array
@@ -533,6 +595,13 @@ void bjson_array_destroy(bjson_array *array)
     free(array);
 }
 
+bjson_thing *bjson_array_get_thing(bjson_array *array, unsigned int index)
+{
+    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
+
+    return thing;
+}
+
 char *bjson_array_get_string(bjson_array *array, unsigned int index, char *buffer, unsigned int size)
 {
     bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
@@ -548,11 +617,46 @@ char *bjson_array_get_string(bjson_array *array, unsigned int index, char *buffe
     return NULL;
 }
 
+long bjson_array_get_number(bjson_array *array, unsigned int index)
+{   
+    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
+
+    return thing->value.number;
+}
+
 bjson_object *bjson_array_get_object(bjson_array *array, unsigned int index)
 {
     bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
 
     return (thing == NULL || thing->type != BJSON_OBJECT) ? NULL : thing->value.object;
+}
+
+bjson_array *bjson_array_get_array(bjson_array *array, unsigned int index)
+{
+    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
+
+    return (thing == NULL || thing->type != BJSON_ARRAY) ? NULL : thing->value.array;
+}
+
+int bjson_array_is_true(bjson_array *array, unsigned int index)
+{
+    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
+
+    return thing->type == BJSON_TRUE;
+}
+
+int bjson_array_is_false(bjson_array *array, unsigned int index)
+{
+    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
+
+    return thing->type == BJSON_FALSE;
+}
+
+int bjson_array_is_null(bjson_array *array, unsigned int index)
+{
+    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
+
+    return thing->type == BJSON_NULL;
 }
 
 size_t bjson_string_len(const char *str)
@@ -613,8 +717,12 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                 }
                 else
                 {
+                    // TODO: Talvez mudar isso pra bjson_thing_set_string(thing, current_thing_name). Também mudar as outras partes pros setters correspondentes,
+                    //       como quando o parser encontrar um objeto mudar para bjson_thing_set_object(thing, bjson_object_create()). Agora faria bem mais sentido
+                    //       só deixar usar um setter em uma thing caso o value_type dela seja BJSON_NOTHING (ou algo do tipo) e ela esteja totalmente "limpa"
+
                     thing = bjson_thing_create();
-                    thing->type = BJSON_STRING;
+                    thing->type = BJSON_STRING; 
 
                     thing->value.string = malloc(string_len + 1);
                     strncpy(thing->value.string, line + i + 1, string_len);
