@@ -25,6 +25,8 @@ https://lihautan.com/json-parser-with-javascript/
 // * Talvez fazer todas as funções de getter (menos as que retornam um objeto, array ou thing) retornarem um código de erro, e mandar o valor
 //   que teria retornado por meio de um pointer passado nos parametros (estilo scanf)
 // * Adicionar uma licença no começo desse arquivo
+// * Talvez voltar pra C++ e refazer o BlueJSON lá, que dai eu posso deixar mais bonito usando operator overloading e polimorfismo. Daria pra
+//   fazer por exemplo: parent_thing = BlueJSON::readFile("teste.json"); parent_thing["arrayzin"][5]["Pessoa"]["Roupas"][1]
 
 // TODOs URGENTES:
 // !!! Talvez só mecher com bjson_thing no high-level e deixar os objects e arrays por baixo dos panos, por ex: ao invés de bjson_thing_get_object()
@@ -317,12 +319,11 @@ void bjson_thing_set_null(bjson_thing *thing)
     thing->type = BJSON_NULL;
 }
 
-typedef struct bjson_thing_list_node bjson_thing_list_node;
-struct bjson_thing_list_node
+typedef struct bjson_thing_list_node
 {
     bjson_thing *thing;
-    bjson_thing_list_node *next;
-};
+    struct bjson_thing_list_node *next;
+} bjson_thing_list_node;
 
 typedef struct
 {
@@ -405,12 +406,11 @@ bjson_thing *bjson_thing_list_get_by_name(bjson_thing_list *list, const char *na
     return NULL;
 }
 
-typedef struct bjson_thing_stack_node bjson_thing_stack_node;
-struct bjson_thing_stack_node
+typedef struct bjson_thing_stack_node
 {
     bjson_thing *thing;
-    bjson_thing_stack_node *link;
-};
+    struct bjson_thing_stack_node *link;
+} bjson_thing_stack_node;
 
 typedef struct
 {
@@ -755,41 +755,26 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
 
                 continue;
             }
-            else if (line[i] == 't') // true
+            else if (strncmp(line + i, BJSON_TOKEN_TRUE, 4) == 0) // true
             {
-                if (strncmp(line + i, BJSON_TOKEN_TRUE, strlen(BJSON_TOKEN_TRUE)) == 0)
-                {
-                    thing = bjson_thing_create();
-                    thing->type = BJSON_TRUE;
+                thing = bjson_thing_create();
+                thing->type = BJSON_TRUE;
 
-                    i += strlen(BJSON_TOKEN_TRUE) - 1;
-                }
-                else
-                    continue;
+                i += strlen(BJSON_TOKEN_TRUE) - 1;
             }
-            else if (line[i] == 'f') // false
+            else if (strncmp(line + i, BJSON_TOKEN_FALSE, 5) == 0) // false
             {
-                if (strncmp(line + i, BJSON_TOKEN_FALSE, strlen(BJSON_TOKEN_FALSE)) == 0)
-                {
-                    thing = bjson_thing_create();
-                    thing->type = BJSON_FALSE;
-                    
-                    i += strlen(BJSON_TOKEN_FALSE) - 1;                    
-                }
-                else
-                    continue;
+                thing = bjson_thing_create();
+                thing->type = BJSON_FALSE;
+                
+                i += strlen(BJSON_TOKEN_FALSE) - 1;      
             }
-            else if (line[i] == 'n') // null
+            else if (strncmp(line + i, BJSON_TOKEN_NULL, 4) == 0) // null
             {
-                if (strncmp(line + i, BJSON_TOKEN_NULL, strlen(BJSON_TOKEN_NULL)) == 0)
-                {
-                    thing = bjson_thing_create();
-                    thing->type = BJSON_NULL;
+                thing = bjson_thing_create();
+                thing->type = BJSON_NULL;
 
-                    i += strlen(BJSON_TOKEN_NULL) - 1;
-                }
-                else
-                    continue;
+                i += strlen(BJSON_TOKEN_NULL) - 1;
             }
             else if (isdigit(line[i]) || line[i] == '-') // TODO: Parsar outros tipos de números que o JSON suporta, tipo float, double, etc... Mas implementar meu proprio parser, sem usa sscanf
             {   
