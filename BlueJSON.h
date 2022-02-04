@@ -14,19 +14,14 @@ https://lihautan.com/json-parser-with-javascript/
 //   começo de uma string), ou um '}' (significando o final do objeto, que no caso seria um objeto vazio), os espaços em branco ' ' 
 //   a função vai ignorar. Como exemplo ver aquele site que checa se o JSON ta certo
 // * Precisa urgentemente dar uma refatorada em praticamente tudo
-// * Aparentemente agora não precisa mais ser só object ou array no parent do arquivo de json, pode ser qualquer tipo de value. Mas claro
-//   que se não for um object ou array só vai ter um value no arquivo inteiro
-// * checar se todos os prefixo dz_ estão devidamente trocados pelo bjson_
 // * Dar uma documentada boa em tudo
 // * Fazer uns benchmarks pra procurar lugares que daria pra dar uma otimizada melhor
 // * Criar um repo no github e colocar uma foto de um Blue Jay, também colocar alguma referência a Blue Jay Way. Talvez eu tenha que colocar
 //   créditos das imagens que eu usar
 // * Reduzir ao máximo o número de #includes
-// * Talvez fazer todas as funções de getter (menos as que retornam um objeto, array ou thing) retornarem um código de erro, e mandar o valor
-//   que teria retornado por meio de um pointer passado nos parametros (estilo scanf)
 // * Adicionar uma licença no começo desse arquivo
 // * Talvez voltar pra C++ e refazer o BlueJSON lá, que dai eu posso deixar mais bonito usando operator overloading e polimorfismo. Daria pra
-//   fazer por exemplo: parent_thing = BlueJSON::readFile("teste.json"); parent_thing["arrayzin"][5]["Pessoa"]["Roupas"][1]
+//   fazer por exemplo: parent_thing = BlueJSON::readFile("teste.json"); camiseta = parent_thing["arrayzin"][5]["Pessoa"]["Roupas"][1]
 
 // TODOs URGENTES:
 // !!! Talvez só mecher com bjson_thing no high-level e deixar os objects e arrays por baixo dos panos, por ex: ao invés de bjson_thing_get_object()
@@ -73,7 +68,6 @@ void bjson_thing_destroy(bjson_thing *thing);
 
 char *bjson_thing_get_name(bjson_thing *thing, char *buffer, unsigned int size);
 bjson_value_type bjson_thing_get_value_type(bjson_thing *thing);
-// bjson_value bjson_thing_get_value(bjson_thing *thing); // TODO: Se pa que é melhor não deixar o user mexer com o value direto na mão
 
 char *bjson_thing_get_string(bjson_thing *thing, char *buffer, unsigned int size);
 long bjson_thing_get_number(bjson_thing *thing);
@@ -84,8 +78,6 @@ int bjson_thing_is_false(bjson_thing *thing);
 int bjson_thing_is_null(bjson_thing *thing);
 
 void bjson_thing_set_name(bjson_thing *thing, const char *name);
-// void bjson_thing_set_value_type(bjson_thing *thing, bjson_value_type type); // TODO: Se pa que é melhor não deixar o user mexer com o value direto na mão
-// void bjson_thing_set_value(bjson_thing *thing, bjson_value value); // TODO: Se pa que é melhor não deixar o user mexer com o value direto na mão
 
 void bjson_thing_set_string(bjson_thing *thing, const char *string);
 void bjson_thing_set_number(bjson_thing *thing, long number);
@@ -98,7 +90,7 @@ void bjson_thing_set_null(bjson_thing *thing);
 bjson_object *bjson_object_create();
 void bjson_object_destroy(bjson_object *object);
 
-bjson_thing *bjson_object_get_thing(bjson_object *object, const char *name); // NOTE: Se o user quiser modificar algo que já esteja em um objeto vai ter que pegar a thing e mudar pelos métodos dela
+bjson_thing *bjson_object_get_thing(bjson_object *object, const char *name);
 char *bjson_object_get_string(bjson_object *object, const char *name, char *buffer, unsigned int size);
 long bjson_object_get_number(bjson_object *object, const char *name);
 bjson_object *bjson_object_get_object(bjson_object *object, const char *name);
@@ -137,6 +129,8 @@ bjson_thing *bjson_read_string(const char *str);
 // Returns the outer-most parent bjson_thing, or NULL on error
 bjson_thing *bjson_read_file(const char *path);
 
+// void bjson_write_file(bjson_thing *thing, const char *path);
+
 #endif
 
 #define BJSON_IMPLEMENTATION
@@ -148,19 +142,15 @@ bjson_thing *bjson_read_file(const char *path);
 #include <ctype.h>
 #include <math.h>
 
-#define BJSON_TOKEN_TRUE "true"
-#define BJSON_TOKEN_FALSE "false"
-#define BJSON_TOKEN_NULL "null"
-
 #define BJSON_FILE_MAX_LINE_SIZE 256
 #define BJSON_FILE_MAX_LINES 1024
 
 struct bjson_thing
 {
-    char *name; // NOTE: Since only objects have named tokens: if used as an array token, name is NULL
+    char *name;
     bjson_value_type type;
     bjson_value value;
-}; // TODO: Achar um termo mais apropriado do que "thing" (na verdade não hehe thing é bem único e legal)
+};
 
 bjson_thing *bjson_thing_create()
 {
@@ -226,12 +216,12 @@ long bjson_thing_get_number(bjson_thing *thing)
 
 bjson_object *bjson_thing_get_object(bjson_thing *thing)
 {
-    return (thing == NULL || thing->type != BJSON_OBJECT) ? NULL : thing->value.object; // TODO: Adicionar mais checks de NULL em todas as funcs
+    return (thing == NULL || thing->type != BJSON_OBJECT) ? NULL : thing->value.object;
 }
 
 bjson_array *bjson_thing_get_array(bjson_thing *thing)
 {
-    return (thing == NULL || thing->type != BJSON_ARRAY) ? NULL : thing->value.array; // TODO: Adicionar mais checks de NULL em todas as funcs
+    return (thing == NULL || thing->type != BJSON_ARRAY) ? NULL : thing->value.array;
 }
 
 int bjson_thing_is_true(bjson_thing *thing)
@@ -327,7 +317,6 @@ typedef struct bjson_thing_list_node
 
 typedef struct
 {
-    // unsigned int length;
     bjson_thing_list_node *start, *end;
 } bjson_thing_list;
 
@@ -376,8 +365,6 @@ void bjson_thing_list_append(bjson_thing_list *list, bjson_thing *thing)
 
 // void bjson_thing_list_remove(bjson_thing_list *list, unsigned int index)
 
-// TODO: Pra ficar mais eficiente: se o index for maior que a metade da length da list, chegar no node indo de trás pra frente
-// TODO: Adicionar uns checkings de erro, pra evitar que o index seja maior que a quantidade de itens na lista, pra não dar ruim com coisas NULL
 bjson_thing *bjson_thing_list_get_at(bjson_thing_list *list, unsigned int index)
 {
     bjson_thing_list_node *node = list->start;
@@ -428,10 +415,8 @@ bjson_thing_stack *bjson_thing_stack_create()
 void bjson_thing_stack_destroy(bjson_thing_stack *stack)
 {
     bjson_thing_stack_node *node = stack->top;
-    while (node != NULL) // !bjson_thing_stack_is_empty(stack)
-    {
-        // bjson_thing_stack_pop(stack);
-        
+    while (node != NULL)
+    {   
         bjson_thing_stack_node *temp_node = node;
         node = node->link;
 
@@ -491,9 +476,6 @@ bjson_object *bjson_object_create()
 
 void bjson_object_destroy(bjson_object *object)
 {
-    // NOTE: Preciso chamar o destructor de todas as things da lista antes de destruir a lista. Talvez
-    //       fazer desse jeito aqui vai ser meio ineficiente, já que que a lista vai ser toda percorrida
-    //       aqui e depois toda percorrida novamente no bjson_thing_list_destroy();
     for (bjson_thing_list_node *node = object->things->start; node != NULL; node = node->next)
         bjson_thing_destroy(node->thing);
 
@@ -585,9 +567,6 @@ bjson_array *bjson_array_create()
 
 void bjson_array_destroy(bjson_array *array)
 {
-    // NOTE: Preciso chamar o destructor de todas as things da lista antes de destruir a lista. Talvez
-    //       fazer desse jeito aqui vai ser meio ineficiente, já que que a lista vai ser toda percorrida
-    //       aqui e depois toda percorrida novamente no bjson_thing_list_destroy();
     for (bjson_thing_list_node *node = array->things->start; node != NULL; node = node->next)
         bjson_thing_destroy(node->thing);
 
@@ -666,16 +645,22 @@ size_t bjson_string_len(const char *str)
 
 #ifdef BJSON_NO_ERROR_CHECKING
 
-int bjson_expect() 
-{ 
+int bjson_expect(const char *tokens) 
+{
     return 1;
 }
 
 #else
 
-int bjson_expect() 
+int bjson_expect(char c, const char *tokens)
 {
-     
+    for (int i = 0; i < strlen(tokens); i++)
+    {
+        if (c == tokens[i])
+            return 1;
+    }
+
+    return 0;
 }
 
 #endif
@@ -685,7 +670,6 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
     // TODO: Talvez retirar essa variável pq daria pra retornar a parent thing direto pelo stack de nested things
     bjson_thing *parent_thing = NULL; // TODO: Talvez mudar o nome pra root_thing
 
-    // int nested_thing_depth = 0; // How deep the parser is inside the nested JSON things
     bjson_thing_stack *nested_things = bjson_thing_stack_create();
 
     // TODO: Talvez quando eu refatorar e tirar a geração de thing pra mais pra fora não precise mais dessa var.
@@ -755,26 +739,26 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
 
                 continue;
             }
-            else if (strncmp(line + i, BJSON_TOKEN_TRUE, 4) == 0) // true
+            else if (strncmp(line + i, "true", 4) == 0)
             {
                 thing = bjson_thing_create();
                 thing->type = BJSON_TRUE;
 
-                i += strlen(BJSON_TOKEN_TRUE) - 1;
+                i += 3;
             }
-            else if (strncmp(line + i, BJSON_TOKEN_FALSE, 5) == 0) // false
+            else if (strncmp(line + i, "false", 5) == 0)
             {
                 thing = bjson_thing_create();
                 thing->type = BJSON_FALSE;
                 
-                i += strlen(BJSON_TOKEN_FALSE) - 1;      
+                i += 4;      
             }
-            else if (strncmp(line + i, BJSON_TOKEN_NULL, 4) == 0) // null
+            else if (strncmp(line + i, "null", 4) == 0)
             {
                 thing = bjson_thing_create();
                 thing->type = BJSON_NULL;
 
-                i += strlen(BJSON_TOKEN_NULL) - 1;
+                i += 3;
             }
             else if (isdigit(line[i]) || line[i] == '-') // TODO: Parsar outros tipos de números que o JSON suporta, tipo float, double, etc... Mas implementar meu proprio parser, sem usa sscanf
             {   
