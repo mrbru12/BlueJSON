@@ -677,19 +677,21 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
     //       sendo copiado direto pra dentro da thing, e não pra essa variável temporária pra depois ser recopiado 
     //       pra thing
     bjson_thing *thing = NULL;
-    char *current_thing_name = NULL; // TODO: Talvez tirar o "current_" do nome dessa var
+    char *current_thing_name = NULL;
     
     for (int current_str = 0; current_str < n; current_str++)
     {
-        const char *line = strs[current_str]; // TODO: Talvez mudar o nome dessa var
+        const char *line = strs[current_str];
         for (int i = 0; i < strlen(line); i++)
         {
             // TODO: Nas strings, checar quando tiver caracateres de escape e especiais, tipo '\"' e '\n', etc...
-            if (line[i] == '"')
+            if (line[i] == '"') 
             {
                 size_t string_len = bjson_string_len(line + i);
 
-                if (current_thing_name == NULL && !bjson_thing_stack_is_empty(nested_things) && bjson_thing_stack_peek(nested_things)->type != BJSON_ARRAY)
+                if (current_thing_name == NULL && 
+                    !bjson_thing_stack_is_empty(nested_things) && 
+                    bjson_thing_stack_peek(nested_things)->type != BJSON_ARRAY) // Name
                 {
                     current_thing_name = malloc(string_len + 1);
                     strncpy(current_thing_name, line + i + 1, string_len);
@@ -699,7 +701,7 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
 
                     continue;
                 }
-                else
+                else // String
                 {
                     // TODO: Talvez mudar isso pra bjson_thing_set_string(thing, current_thing_name). Também mudar as outras partes pros setters correspondentes,
                     //       como quando o parser encontrar um objeto mudar para bjson_thing_set_object(thing, bjson_object_create()). Agora faria bem mais sentido
@@ -715,56 +717,57 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                     i += string_len + 1;
                 }
             }
-            else if (line[i] == '{')
+            else if (line[i] == '{') // Object begin
             {
                 thing = bjson_thing_create();
                 thing->type = BJSON_OBJECT;
                 thing->value.object = bjson_object_create();
             }
-            else if (line[i] == '}')
+            else if (line[i] == '}') // Object end
             {
                 bjson_thing_stack_pop(nested_things);
 
                 continue;
             }
-            else if (line[i] == '[')
+            else if (line[i] == '[') // Array begin
             {
                 thing = bjson_thing_create();
                 thing->type = BJSON_ARRAY;
                 thing->value.array = bjson_array_create();
             }
-            else if (line[i] == ']')
+            else if (line[i] == ']') // Array end
             {
                 bjson_thing_stack_pop(nested_things);
 
                 continue;
             }
-            else if (strncmp(line + i, "true", 4) == 0)
+            else if (strncmp(line + i, "true", 4) == 0) // True
             {
                 thing = bjson_thing_create();
                 thing->type = BJSON_TRUE;
 
                 i += 3;
             }
-            else if (strncmp(line + i, "false", 5) == 0)
+            else if (strncmp(line + i, "false", 5) == 0) // False
             {
                 thing = bjson_thing_create();
                 thing->type = BJSON_FALSE;
                 
                 i += 4;      
             }
-            else if (strncmp(line + i, "null", 4) == 0)
+            else if (strncmp(line + i, "null", 4) == 0) // Null
             {
                 thing = bjson_thing_create();
                 thing->type = BJSON_NULL;
 
                 i += 3;
             }
-            else if (isdigit(line[i]) || line[i] == '-') // TODO: Parsar outros tipos de números que o JSON suporta, tipo float, double, etc... Mas implementar meu proprio parser, sem usa sscanf
-            {   
+            else if (isdigit(line[i]) || line[i] == '-') // Number
+            {
                 thing = bjson_thing_create();
                 thing->type = BJSON_NUMBER;
                 
+                // TODO: Parsar outros tipos de números que o JSON suporta, tipo float, double, etc... Mas implementar meu proprio parser, sem usa sscanf
                 sscanf(line + i, "%ld", &thing->value.number);
 
                 // TODO: Talvez esse método do log10 não funcione pra floats. Lembrando que sempre que for parsar algo que seja mais
@@ -824,7 +827,7 @@ bjson_thing *bjson_read_file(const char *path)
     while (n < BJSON_FILE_MAX_LINES)
     {
         lines[n] = malloc(BJSON_FILE_MAX_LINE_SIZE);
-
+        
         if (fgets(lines[n], BJSON_FILE_MAX_LINE_SIZE, file) == NULL)
             break;
 
