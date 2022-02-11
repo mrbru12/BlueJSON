@@ -66,6 +66,8 @@ typedef union
 bjson_thing *bjson_thing_create();
 void bjson_thing_destroy(bjson_thing *thing);
 
+void bjson_thing_print(bjson_thing *thing);
+
 char *bjson_thing_get_name(bjson_thing *thing, char *buffer, unsigned int size);
 bjson_value_type bjson_thing_get_value_type(bjson_thing *thing);
 
@@ -131,6 +133,8 @@ bjson_thing *bjson_read_file(const char *path);
 
 // void bjson_write_file(bjson_thing *thing, const char *path);
 
+void bjson_print(bjson_thing *thing);
+
 #endif
 
 #define BJSON_IMPLEMENTATION
@@ -186,6 +190,35 @@ void bjson_thing_destroy_value(bjson_thing *thing)
         bjson_array_destroy(thing->value.array);
 
     thing->type = BJSON_NOTHING;
+}
+
+void bjson_thing_print(bjson_thing *thing)
+{
+    switch (thing->type)
+    {
+    case BJSON_STRING:
+        printf("%s\n", thing->value.string);
+        break;
+
+    case BJSON_NUMBER:
+        printf("%d\n", (int)thing->value.number);
+        break;
+
+    case BJSON_TRUE:
+        printf("true\n");
+        break;
+
+    case BJSON_FALSE:
+        printf("false\n");
+        break;
+    
+    case BJSON_NULL:
+        printf("null\n");
+        break;
+
+    default:
+        break;
+    }
 }
 
 char *bjson_thing_get_name(bjson_thing *thing, char *buffer, unsigned int size)
@@ -842,6 +875,35 @@ bjson_thing *bjson_read_file(const char *path)
     fclose(file);
 
     return parent_thing;
+}
+
+void bjson_print(bjson_thing *root) // TODO: Talvez usar o nome root ao invés de parent em tudo
+{
+    static int nested_depth = 0;
+
+    if (root->type == BJSON_OBJECT || root->type == BJSON_ARRAY)
+    {
+        for (bjson_thing_list_node *node = (root->type == BJSON_OBJECT) ? root->value.object->things->start : root->value.array->things->start; node != NULL; node = node->next)
+        {
+            bjson_thing *thing = node->thing;
+
+            if (thing->type == BJSON_OBJECT || thing->type == BJSON_ARRAY)
+            {
+                nested_depth++;
+                bjson_print(thing);
+            }
+            else
+            {
+                for (int i = 0; i < nested_depth; i++)
+                    printf("  ");
+                bjson_thing_print(thing);
+            }
+        }
+
+        nested_depth--;
+    }
+    else
+        bjson_thing_print(root);
 }
 
 #endif
