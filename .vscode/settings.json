@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "*.h": "c",
+        "utility": "cpp",
+        "deque": "cpp",
+        "memory": "cpp",
+        "xstring": "cpp",
+        "xutility": "cpp"
+    }
+}
