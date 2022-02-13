@@ -22,6 +22,7 @@ https://lihautan.com/json-parser-with-javascript/
 // * Adicionar uma licença no começo desse arquivo
 // * Talvez voltar pra C++ e refazer o BlueJSON lá, que dai eu posso deixar mais bonito usando operator overloading e polimorfismo. Daria pra
 //   fazer por exemplo: parent_thing = BlueJSON::readFile("teste.json"); camiseta = parent_thing["arrayzin"][5]["Pessoa"]["Roupas"][1]
+// * Talvez no Array e no Object mudar os nomes dos getters e setters pra ..._find_get_... e ..._find_set_...
 
 // TODOs URGENTES:
 // !!! Talvez só mecher com bjson_thing no high-level e deixar os objects e arrays por baixo dos panos, por ex: ao invés de bjson_thing_get_object()
@@ -64,30 +65,36 @@ typedef union
 } bjson_value;
 
 bjson_thing *bjson_thing_create();
-void bjson_thing_destroy(bjson_thing *thing);
+void bjson_thing_destroy(bjson_thing *thing); // TODO: Aparentemente tem algo de errado nessa função, se pá q ela não tá limpando direito, dar uma testada melhor
 
-void bjson_thing_print(bjson_thing *thing);
+void bjson_thing_print(bjson_thing *thing); // TODO: Não sei se eu gosto muito dessa função existir :/
 
 char *bjson_thing_get_name(bjson_thing *thing, char *buffer, unsigned int size);
 bjson_value_type bjson_thing_get_value_type(bjson_thing *thing);
 
-char *bjson_thing_get_string(bjson_thing *thing, char *buffer, unsigned int size);
-long bjson_thing_get_number(bjson_thing *thing);
-bjson_object *bjson_thing_get_object(bjson_thing *thing);
-bjson_array *bjson_thing_get_array(bjson_thing *thing);
+char *bjson_thing_get_as_string(bjson_thing *thing, char *buffer, unsigned int size);
+long bjson_thing_get_as_number(bjson_thing *thing);
+// int bjson_thing_get_as_int(bjson_thing *thing);
+// float bjson_thing_get_as_float(bjson_thing *thing);
+// double bjson_thing_get_as_double(bjson_thing *thing);
+bjson_object *bjson_thing_get_as_object(bjson_thing *thing);
+bjson_array *bjson_thing_get_as_array(bjson_thing *thing);
 int bjson_thing_is_true(bjson_thing *thing);
 int bjson_thing_is_false(bjson_thing *thing);
 int bjson_thing_is_null(bjson_thing *thing);
 
 void bjson_thing_set_name(bjson_thing *thing, const char *name);
 
-void bjson_thing_set_string(bjson_thing *thing, const char *string);
-void bjson_thing_set_number(bjson_thing *thing, long number);
-void bjson_thing_set_object(bjson_thing *thing, bjson_object *object);
-void bjson_thing_set_array(bjson_thing *thing, bjson_array *array);
-void bjson_thing_set_true(bjson_thing *thing);
-void bjson_thing_set_false(bjson_thing *thing);
-void bjson_thing_set_null(bjson_thing *thing);
+void bjson_thing_set_as_string(bjson_thing *thing, const char *string);
+void bjson_thing_set_as_number(bjson_thing *thing, long number);
+// void bjson_thing_set_as_int(bjson_thing *thing, int number);
+// void bjson_thing_set_as_float(bjson_thing *thing, float number);
+// void json_thing_set_as_double(bjson_thing *thing, double number);
+void bjson_thing_set_as_object(bjson_thing *thing, bjson_object *object);
+void bjson_thing_set_as_array(bjson_thing *thing, bjson_array *array);
+void bjson_thing_set_as_true(bjson_thing *thing);
+void bjson_thing_set_as_false(bjson_thing *thing);
+void bjson_thing_set_as_null(bjson_thing *thing);
 
 bjson_object *bjson_object_create();
 void bjson_object_destroy(bjson_object *object);
@@ -95,6 +102,9 @@ void bjson_object_destroy(bjson_object *object);
 bjson_thing *bjson_object_get_thing(bjson_object *object, const char *name);
 char *bjson_object_get_string(bjson_object *object, const char *name, char *buffer, unsigned int size);
 long bjson_object_get_number(bjson_object *object, const char *name);
+// int bjson_object_get_int(bjson_object *object);
+// float bjson_object_get_float(bjson_object *object);
+// double bjson_object_get_double(bjson_object *object);
 bjson_object *bjson_object_get_object(bjson_object *object, const char *name);
 bjson_array *bjson_object_get_array(bjson_object *object, const char *name);
 int bjson_object_is_true(bjson_object *object, const char *name);
@@ -102,7 +112,7 @@ int bjson_object_is_false(bjson_object *object, const char *name);
 int bjson_object_is_null(bjson_object *object, const char *name);
 
 // Appends the specified thing to the end of the object things
-void bjson_object_add_thing(bjson_object *object, bjson_thing *thing);
+void bjson_object_push_thing(bjson_object *object, bjson_thing *thing);
 
 bjson_array *bjson_array_create();
 void bjson_array_destroy(bjson_array *array);
@@ -110,6 +120,9 @@ void bjson_array_destroy(bjson_array *array);
 bjson_thing *bjson_array_get_thing(bjson_array *array, unsigned int index);
 char *bjson_array_get_string(bjson_array *array, unsigned int index, char *buffer, unsigned int size);
 long bjson_array_get_number(bjson_array *array, unsigned int index);
+// int bjson_array_get_int(bjson_array *array);
+// float bjson_array_get_float(bjson_array *array);
+// double bjson_array_get_double(bjson_array *array);
 bjson_object *bjson_array_get_object(bjson_array *array, unsigned int index);
 bjson_array *bjson_array_get_array(bjson_array *array, unsigned int index);
 int bjson_array_is_true(bjson_array *array, unsigned int index);
@@ -117,7 +130,7 @@ int bjson_array_is_false(bjson_array *array, unsigned int index);
 int bjson_array_is_null(bjson_array *array, unsigned int index);
 
 // Appends the specified thing to the end of the array things
-void bjson_array_add_thing(bjson_array *array, bjson_thing *thing);
+void bjson_array_push_thing(bjson_array *array, bjson_thing *thing);
 
 // Parses the specified n strings
 // Returns the outer-most parent bjson_thing, or NULL on error
@@ -133,6 +146,7 @@ bjson_thing *bjson_read_file(const char *path);
 
 // void bjson_write_file(bjson_thing *thing, const char *path);
 
+// TODO: Essa função tá meio gambiarra por enquanto, dar uma melhorada nela futuramente
 void bjson_print(bjson_thing *thing);
 
 #endif
@@ -234,7 +248,7 @@ bjson_value_type bjson_thing_get_value_type(bjson_thing *thing)
     return thing->type;
 }
 
-char *bjson_thing_get_string(bjson_thing *thing, char *buffer, unsigned int size)
+char *bjson_thing_get_as_string(bjson_thing *thing, char *buffer, unsigned int size)
 {
     strncpy(buffer, thing->value.string, size);
     buffer[size - 1] = '\0';
@@ -242,17 +256,17 @@ char *bjson_thing_get_string(bjson_thing *thing, char *buffer, unsigned int size
     return buffer;
 }
 
-long bjson_thing_get_number(bjson_thing *thing)
+long bjson_thing_get_as_number(bjson_thing *thing)
 {
     return thing->value.number;
 }
 
-bjson_object *bjson_thing_get_object(bjson_thing *thing)
+bjson_object *bjson_thing_get_as_object(bjson_thing *thing)
 {
     return (thing == NULL || thing->type != BJSON_OBJECT) ? NULL : thing->value.object;
 }
 
-bjson_array *bjson_thing_get_array(bjson_thing *thing)
+bjson_array *bjson_thing_get_as_array(bjson_thing *thing)
 {
     return (thing == NULL || thing->type != BJSON_ARRAY) ? NULL : thing->value.array;
 }
@@ -281,7 +295,7 @@ void bjson_thing_set_name(bjson_thing *thing, const char *name)
     strcpy(thing->name, name);
 }
 
-void bjson_thing_set_string(bjson_thing *thing, const char *string)
+void bjson_thing_set_as_string(bjson_thing *thing, const char *string)
 {
     if (thing->type != BJSON_NOTHING)
         bjson_thing_destroy_value(thing);
@@ -291,7 +305,7 @@ void bjson_thing_set_string(bjson_thing *thing, const char *string)
     strcpy(thing->value.string, string);
 }
 
-void bjson_thing_set_number(bjson_thing *thing, long number)
+void bjson_thing_set_as_number(bjson_thing *thing, long number)
 {
     if (thing->type != BJSON_NOTHING)
         bjson_thing_destroy_value(thing);
@@ -300,7 +314,7 @@ void bjson_thing_set_number(bjson_thing *thing, long number)
     thing->value.number = number;
 }
 
-void bjson_thing_set_object(bjson_thing *thing, bjson_object *object)
+void bjson_thing_set_as_object(bjson_thing *thing, bjson_object *object)
 {
     if (thing->type != BJSON_NOTHING)
         bjson_thing_destroy_value(thing);
@@ -309,7 +323,7 @@ void bjson_thing_set_object(bjson_thing *thing, bjson_object *object)
     thing->value.object = object;
 }
 
-void bjson_thing_set_array(bjson_thing *thing, bjson_array *array)
+void bjson_thing_set_as_array(bjson_thing *thing, bjson_array *array)
 {
     if (thing->type != BJSON_NOTHING)
         bjson_thing_destroy_value(thing);
@@ -318,7 +332,7 @@ void bjson_thing_set_array(bjson_thing *thing, bjson_array *array)
     thing->value.array = array;
 }
 
-void bjson_thing_set_true(bjson_thing *thing)
+void bjson_thing_set_as_true(bjson_thing *thing)
 {
     if (thing->type != BJSON_NOTHING)
         bjson_thing_destroy_value(thing);
@@ -326,7 +340,7 @@ void bjson_thing_set_true(bjson_thing *thing)
     thing->type = BJSON_TRUE;
 }
 
-void bjson_thing_set_false(bjson_thing *thing)
+void bjson_thing_set_as_false(bjson_thing *thing)
 {
     if (thing->type != BJSON_NOTHING)
         bjson_thing_destroy_value(thing);
@@ -334,7 +348,7 @@ void bjson_thing_set_false(bjson_thing *thing)
     thing->type = BJSON_FALSE;
 }
 
-void bjson_thing_set_null(bjson_thing *thing)
+void bjson_thing_set_as_null(bjson_thing *thing)
 {
     if (thing->type != BJSON_NOTHING)
         bjson_thing_destroy_value(thing);
@@ -580,7 +594,7 @@ int bjson_object_is_null(bjson_object *object, const char *name)
     return thing->type == BJSON_NULL;
 }
 
-void bjson_object_add_thing(bjson_object *object, bjson_thing *thing)
+void bjson_object_push_thing(bjson_object *object, bjson_thing *thing)
 {
     bjson_thing_list_append(object->things, thing);
 }
@@ -669,6 +683,11 @@ int bjson_array_is_null(bjson_array *array, unsigned int index)
     bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
 
     return thing->type == BJSON_NULL;
+}
+
+void bjson_array_push_thing(bjson_array *array, bjson_thing *thing)
+{
+    bjson_thing_list_append(array->things, thing);
 }
 
 size_t bjson_string_len(const char *str)
