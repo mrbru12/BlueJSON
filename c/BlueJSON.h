@@ -8,7 +8,6 @@ https://lihautan.com/json-parser-with-javascript/
 */
 
 // TODOs:
-// * Talvez eu tenha que mudar o tipo (que agora ta como long) que representa um "Number"
 // * Fazer um sistema de checagem de erro com uma função tipo bjson_expect(const char *tokens). Dai, por exemplo, depois de encontrar
 //   o começo de um objeto '{' teria que ter um bjson_expect(""}"), ou seja, ele esperaria que tivesse uma '"' (significando o
 //   começo de uma string), ou um '}' (significando o final do objeto, que no caso seria um objeto vazio), os espaços em branco ' ' 
@@ -21,8 +20,12 @@ https://lihautan.com/json-parser-with-javascript/
 // * Reduzir ao máximo o número de #includes
 // * Adicionar uma licença no começo desse arquivo
 // * Talvez voltar pra C++ e refazer o BlueJSON lá, que dai eu posso deixar mais bonito usando operator overloading e polimorfismo. Daria pra
-//   fazer por exemplo: parent_thing = BlueJSON::readFile("teste.json"); camiseta = parent_thing["arrayzin"][5]["Pessoa"]["Roupas"][1]
-// * Talvez no Array e no Object mudar os nomes dos getters e setters pra ..._find_get_... e ..._find_set_...
+//   fazer por exemplo: root_thing = BlueJSON::readFile("teste.json"); camiseta = root_thing["arrayzin"][5]["Pessoa"]["Roupas"][1]
+// * Talvez no Array e no Object mudar os nomes dos getters e setters pra ..._find_get_...() e ..._find_set_...()
+// * Talvez olhar nos commits antigos no Github e pegar de volta alguns TODOs que eu tirei pq pensei que n ia mais precisar
+// * Seria interessante se os setters retornassem o objeto pra poder fazer várias operações encadeadas em uma única linha
+// * Seria legal mudar o design do projeto inteiro e fazer tudo estilo funções C, teria tipo fprintjson(FILE *file, ...)
+// * Talvez mudar de bjson_read_...() pra bjson_load_...() porque se pa que faz mais sentido
 
 // TODOs URGENTES:
 // !!! Talvez só mecher com bjson_thing no high-level e deixar os objects e arrays por baixo dos panos, por ex: ao invés de bjson_thing_get_object()
@@ -59,7 +62,7 @@ typedef enum
 typedef union
 {
     char *string;
-    long number;
+    double number;
     bjson_object *object;
     bjson_array *array;
 } bjson_value;
@@ -67,16 +70,15 @@ typedef union
 bjson_thing *bjson_thing_create();
 void bjson_thing_destroy(bjson_thing *thing); // TODO: Aparentemente tem algo de errado nessa função, se pá q ela não tá limpando direito, dar uma testada melhor
 
-void bjson_thing_print(bjson_thing *thing); // TODO: Não sei se eu gosto muito dessa função existir :/
+void bjson_thing_print(bjson_thing *thing);
 
 char *bjson_thing_get_name(bjson_thing *thing, char *buffer, unsigned int size);
 bjson_value_type bjson_thing_get_value_type(bjson_thing *thing);
 
 char *bjson_thing_get_as_string(bjson_thing *thing, char *buffer, unsigned int size);
-long bjson_thing_get_as_number(bjson_thing *thing);
-// int bjson_thing_get_as_int(bjson_thing *thing);
-// float bjson_thing_get_as_float(bjson_thing *thing);
-// double bjson_thing_get_as_double(bjson_thing *thing);
+int bjson_thing_get_as_int(bjson_thing *thing);
+float bjson_thing_get_as_float(bjson_thing *thing);
+double bjson_thing_get_as_double(bjson_thing *thing);
 bjson_object *bjson_thing_get_as_object(bjson_thing *thing);
 bjson_array *bjson_thing_get_as_array(bjson_thing *thing);
 int bjson_thing_is_true(bjson_thing *thing);
@@ -86,10 +88,9 @@ int bjson_thing_is_null(bjson_thing *thing);
 void bjson_thing_set_name(bjson_thing *thing, const char *name);
 
 void bjson_thing_set_as_string(bjson_thing *thing, const char *string);
-void bjson_thing_set_as_number(bjson_thing *thing, long number);
-// void bjson_thing_set_as_int(bjson_thing *thing, int number);
-// void bjson_thing_set_as_float(bjson_thing *thing, float number);
-// void json_thing_set_as_double(bjson_thing *thing, double number);
+void bjson_thing_set_as_int(bjson_thing *thing, int number);
+void bjson_thing_set_as_float(bjson_thing *thing, float number);
+void bjson_thing_set_as_double(bjson_thing *thing, double number);
 void bjson_thing_set_as_object(bjson_thing *thing, bjson_object *object);
 void bjson_thing_set_as_array(bjson_thing *thing, bjson_array *array);
 void bjson_thing_set_as_true(bjson_thing *thing);
@@ -101,10 +102,9 @@ void bjson_object_destroy(bjson_object *object);
 
 bjson_thing *bjson_object_get_thing(bjson_object *object, const char *name);
 char *bjson_object_get_string(bjson_object *object, const char *name, char *buffer, unsigned int size);
-long bjson_object_get_number(bjson_object *object, const char *name);
-// int bjson_object_get_int(bjson_object *object);
-// float bjson_object_get_float(bjson_object *object);
-// double bjson_object_get_double(bjson_object *object);
+int bjson_object_get_int(bjson_object *object, const char *name);
+float bjson_object_get_float(bjson_object *object, const char *name);
+double bjson_object_get_double(bjson_object *object, const char *name);
 bjson_object *bjson_object_get_object(bjson_object *object, const char *name);
 bjson_array *bjson_object_get_array(bjson_object *object, const char *name);
 int bjson_object_is_true(bjson_object *object, const char *name);
@@ -119,10 +119,9 @@ void bjson_array_destroy(bjson_array *array);
 
 bjson_thing *bjson_array_get_thing(bjson_array *array, unsigned int index);
 char *bjson_array_get_string(bjson_array *array, unsigned int index, char *buffer, unsigned int size);
-long bjson_array_get_number(bjson_array *array, unsigned int index);
-// int bjson_array_get_int(bjson_array *array);
-// float bjson_array_get_float(bjson_array *array);
-// double bjson_array_get_double(bjson_array *array);
+int bjson_array_get_int(bjson_array *array, unsigned int index);
+float bjson_array_get_float(bjson_array *array, unsigned int index);
+double bjson_array_get_double(bjson_array *array, unsigned int index);
 bjson_object *bjson_array_get_object(bjson_array *array, unsigned int index);
 bjson_array *bjson_array_get_array(bjson_array *array, unsigned int index);
 int bjson_array_is_true(bjson_array *array, unsigned int index);
@@ -133,25 +132,28 @@ int bjson_array_is_null(bjson_array *array, unsigned int index);
 void bjson_array_push_thing(bjson_array *array, bjson_thing *thing);
 
 // Parses the specified n strings
-// Returns the outer-most parent bjson_thing, or NULL on error
+// Returns the outer-most root bjson_thing, or NULL on error
 bjson_thing *bjson_read_strings(const char *strs[], unsigned int n);
 
 // Parses the specified string
-// Returns the outer-most parent bjson_thing, or NULL on error
+// Returns the outer-most root bjson_thing, or NULL on error
 bjson_thing *bjson_read_string(const char *str);
 
 // Parses the entire JSON file specified by the file path
-// Returns the outer-most parent bjson_thing, or NULL on error
+// Returns the outer-most root bjson_thing, or NULL on error
 bjson_thing *bjson_read_file(const char *path);
+
+// void bjson_write_strings(bjson_thing *thing, const char *buffers[], unsigned int size, unsigned int n);
+
+// void bjson_write_string(bjson_thing *thing, const char *buffer, unsigned int size);
 
 // void bjson_write_file(bjson_thing *thing, const char *path);
 
-// TODO: Essa função tá meio gambiarra por enquanto, dar uma melhorada nela futuramente
-void bjson_print(bjson_thing *thing);
+// Prints the whole JSON structure from root
+void bjson_print(bjson_thing *root);
 
 #endif
 
-#define BJSON_IMPLEMENTATION
 #ifdef BJSON_IMPLEMENTATION
 
 #include <stdlib.h>
@@ -206,6 +208,7 @@ void bjson_thing_destroy_value(bjson_thing *thing)
     thing->type = BJSON_NOTHING;
 }
 
+ // TODO: Não sei se eu gosto muito dessa função existir :/ Pelo menos não do jeito que ela tá agora
 void bjson_thing_print(bjson_thing *thing)
 {
     switch (thing->type)
@@ -256,7 +259,17 @@ char *bjson_thing_get_as_string(bjson_thing *thing, char *buffer, unsigned int s
     return buffer;
 }
 
-long bjson_thing_get_as_number(bjson_thing *thing)
+int bjson_thing_get_as_int(bjson_thing *thing)
+{
+    return (int)(thing->value.number);
+}
+
+float bjson_thing_get_as_float(bjson_thing *thing)
+{
+    return (float)(thing->value.number);
+}
+
+double bjson_thing_get_as_double(bjson_thing *thing)
 {
     return thing->value.number;
 }
@@ -305,7 +318,17 @@ void bjson_thing_set_as_string(bjson_thing *thing, const char *string)
     strcpy(thing->value.string, string);
 }
 
-void bjson_thing_set_as_number(bjson_thing *thing, long number)
+void bjson_thing_set_as_int(bjson_thing *thing, int number)
+{
+    bjson_thing_set_as_double(thing, (double)number);
+}
+
+void bjson_thing_set_as_float(bjson_thing *thing, float number)
+{
+    bjson_thing_set_as_double(thing, (double)number);
+}
+
+void bjson_thing_set_as_double(bjson_thing *thing, double number)
 {
     if (thing->type != BJSON_NOTHING)
         bjson_thing_destroy_value(thing);
@@ -552,7 +575,24 @@ char *bjson_object_get_string(bjson_object *object, const char *name, char *buff
     return NULL;
 }
 
-long bjson_object_get_number(bjson_object *object, const char *name)
+double bjson_object_get_number(bjson_object *object, const char *name)
+{
+    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
+
+    return thing->value.number;
+}
+
+int bjson_object_get_int(bjson_object *object, const char *name)
+{
+    return (int)bjson_object_get_double(object, name);
+}
+
+float bjson_object_get_float(bjson_object *object, const char *name)
+{
+    return (float)bjson_object_get_double(object, name);
+}
+
+double bjson_object_get_double(bjson_object *object, const char *name)
 {
     bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
 
@@ -643,8 +683,18 @@ char *bjson_array_get_string(bjson_array *array, unsigned int index, char *buffe
     return NULL;
 }
 
-long bjson_array_get_number(bjson_array *array, unsigned int index)
-{   
+int bjson_array_get_int(bjson_array *array, unsigned int index)
+{
+    return (int)bjson_array_get_double(array, index);
+}
+
+float bjson_array_get_float(bjson_array *array, unsigned int index)
+{
+    return (float)bjson_array_get_double(array, index);
+}
+
+double bjson_array_get_double(bjson_array *array, unsigned int index)
+{
     bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
 
     return thing->value.number;
@@ -719,8 +769,8 @@ int bjson_expect(char c, const char *tokens)
 
 bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
 {
-    // TODO: Talvez retirar essa variável pq daria pra retornar a parent thing direto pelo stack de nested things
-    bjson_thing *parent_thing = NULL; // TODO: Talvez mudar o nome pra root_thing
+    // TODO: Talvez retirar essa variável pq daria pra retornar a root thing direto pelo stack de nested things
+    bjson_thing *root_thing = NULL; // TODO: Talvez mudar o nome pra root_thing
 
     bjson_thing_stack *nested_things = bjson_thing_stack_create();
 
@@ -814,17 +864,42 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
 
                 i += 3;
             }
-            else if (isdigit(line[i]) || line[i] == '-') // Number
+            else if (isdigit(line[i]) || line[i] == '-' || line[i] == '.') // Number
             {
+                double number = 0.0;
+
+                int is_negative = line[i] == '-';
+                if (is_negative)
+                    i++;
+
+                int number_start = i;
+                while (isdigit(line[i]))
+                {
+                    number += (double)(line[i] - 48) / pow(10.0, i - number_start); // Generate the number exponentially from back to front
+
+                    i++;
+                }
+                number *= pow(10.0, i - number_start - 1); // Offset the generated number to the left
+
+                int fraction_start = i;
+                if (line[i] == '.')
+                {
+                    i++;
+
+                    while (isdigit(line[i]))
+                    {
+                        number += (line[i] - 48) / pow(10.0, i - fraction_start); // Generate the fraction
+
+                        i++;
+                    }
+                }
+
+                if (is_negative)
+                    number = -number;
+
                 thing = bjson_thing_create();
                 thing->type = BJSON_NUMBER;
-                
-                // TODO: Parsar outros tipos de números que o JSON suporta, tipo float, double, etc... Mas implementar meu proprio parser, sem usa sscanf
-                sscanf(line + i, "%ld", &thing->value.number);
-
-                // TODO: Talvez esse método do log10 não funcione pra floats. Lembrando que sempre que for parsar algo que seja mais
-                //       longo que um caracter precisa incrementar o i pra não bugar e ficar tentando ler coisa que já foi parsada
-                i += (int)log10(thing->value.number);
+                thing->value.number = number;
             }
             else // Ignorable characters
                 continue;
@@ -836,8 +911,8 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                 if (thing->type != BJSON_OBJECT && thing->type != BJSON_ARRAY)
                     return thing;
 
-                // Set it as the parent thing and ignore the name setting, since it should not be named
-                parent_thing = thing;
+                // Set it as the root thing and ignore the name setting, since it should not be named
+                root_thing = thing;
             }
             else
             {
@@ -860,7 +935,7 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
         }
     }
 
-    return parent_thing;
+    return root_thing;
 }
 
 bjson_thing *bjson_read_string(const char *str)
@@ -886,17 +961,18 @@ bjson_thing *bjson_read_file(const char *path)
         n++;
     }
     
-    bjson_thing *parent_thing = bjson_read_strings((const char **)lines, n);
+    bjson_thing *root_thing = bjson_read_strings((const char **)lines, n);
     
     for (int i = 0; i < n + 1; i++)
         free(lines[i]);
 
     fclose(file);
 
-    return parent_thing;
+    return root_thing;
 }
 
-void bjson_print(bjson_thing *root) // TODO: Talvez usar o nome root ao invés de parent em tudo
+// TODO: Essa função tá meio gambiarra por enquanto, dar uma melhorada nela futuramente
+void bjson_print(bjson_thing *root)
 {
     static int nested_depth = 0;
 
