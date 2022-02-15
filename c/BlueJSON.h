@@ -26,6 +26,11 @@ https://lihautan.com/json-parser-with-javascript/
 // * Seria interessante se os setters retornassem o objeto pra poder fazer várias operações encadeadas em uma única linha
 // * Seria legal mudar o design do projeto inteiro e fazer tudo estilo funções C, teria tipo fprintjson(FILE *file, ...)
 // * Talvez mudar de bjson_read_...() pra bjson_load_...() porque se pa que faz mais sentido
+// * A única coisa que falta pro parser fica completo é terminar as nuancias de parsar strings (parsar os \n, \\, \t, \", ...) e terminar as
+//   nuancias de parsar numbers (como a parte do 'e', 'E', ...). Depois que eu acabar essas coisas da pra focar em refatorar e fazer as outras
+//   features
+// * Talvez printar para o stderr (que é um buffer de output assim como o stdout) caso um expected falhe. A mensagem de erro pode ser algo 
+//   como "ERROR: Unexpected ... at line ..."
 
 // TODOs URGENTES:
 // !!! Talvez só mecher com bjson_thing no high-level e deixar os objects e arrays por baixo dos panos, por ex: ao invés de bjson_thing_get_object()
@@ -745,24 +750,40 @@ size_t bjson_string_len(const char *str)
     return strchr(str + 1, '"') - (str + 1);
 }
 
+void bjson_panic(const char *msg)
+{
+    fprintf(stderr, "ERROR: %s\n", msg);
+    exit(1);
+}
+
 #ifdef BJSON_NO_ERROR_CHECKING
 
-int bjson_expect(const char *tokens) 
+int bjson_expect_is_char(char c, const char *expected_chars) 
+{
+    return 1;
+}
+
+int bjson_expect_is_number(char c)
 {
     return 1;
 }
 
 #else
 
-int bjson_expect(char c, const char *tokens)
+int bjson_expect_is_char(char c, const char *expected_chars, unsigned int count)
 {
-    for (int i = 0; i < strlen(tokens); i++)
+    for (int i = 0; i < count; i++)
     {
-        if (c == tokens[i])
+        if (c == expected_chars[i])
             return 1;
     }
 
     return 0;
+}
+
+int bjson_expect_is_number(char c)
+{
+    return isdigit(c);
 }
 
 #endif
@@ -784,7 +805,9 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
     for (int current_str = 0; current_str < n; current_str++)
     {
         const char *line = strs[current_str];
-        for (int i = 0; i < strlen(line); i++)
+        
+        int i = 0; 
+        while (i < strlen(line))
         {
             // TODO: Nas strings, checar quando tiver caracateres de escape e especiais, tipo '\"' e '\n', etc...
             if (line[i] == '"') 
@@ -799,7 +822,7 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                     strncpy(current_thing_name, line + i + 1, string_len);
                     current_thing_name[string_len] = '\0';
                     
-                    i += string_len + 1;
+                    i += string_len + 2;
 
                     continue;
                 }
@@ -816,7 +839,7 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                     strncpy(thing->value.string, line + i + 1, string_len);
                     thing->value.string[string_len] = '\0';
 
-                    i += string_len + 1;
+                    i += string_len + 2;
                 }
             }
             else if (line[i] == '{') // Object begin
@@ -824,11 +847,14 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                 thing = bjson_thing_create();
                 thing->type = BJSON_OBJECT;
                 thing->value.object = bjson_object_create();
+
+                i++;
             }
             else if (line[i] == '}') // Object end
             {
                 bjson_thing_stack_pop(nested_things);
 
+                i++;
                 continue;
             }
             else if (line[i] == '[') // Array begin
@@ -836,11 +862,14 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                 thing = bjson_thing_create();
                 thing->type = BJSON_ARRAY;
                 thing->value.array = bjson_array_create();
+
+                i++;
             }
             else if (line[i] == ']') // Array end
             {
                 bjson_thing_stack_pop(nested_things);
 
+                i++;
                 continue;
             }
             else if (strncmp(line + i, "true", 4) == 0) // True
@@ -848,53 +877,98 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                 thing = bjson_thing_create();
                 thing->type = BJSON_TRUE;
 
-                i += 3;
+                i += 4;
             }
             else if (strncmp(line + i, "false", 5) == 0) // False
             {
                 thing = bjson_thing_create();
                 thing->type = BJSON_FALSE;
                 
-                i += 4;      
+                i += 5;      
             }
             else if (strncmp(line + i, "null", 4) == 0) // Null
             {
                 thing = bjson_thing_create();
                 thing->type = BJSON_NULL;
 
-                i += 3;
+                i += 4;
             }
-            else if (isdigit(line[i]) || line[i] == '-' || line[i] == '.') // Number
+            else if (isdigit(line[i]) || line[i] == '-') // Number
             {
-                double number = 0.0;
+                 // TODO: Precisa de uma boa refatorada nessa parte de números pra deixar mais claro o que ta acontecendo, apesar de estar bonitin *-*
+                 // TODO: Precisa fazer mensagens de erro correspondentes pra cada tipo de erro e talvez mostrar mais infos nelas como a linha que deu erro
 
-                int is_negative = line[i] == '-';
-                if (is_negative)
-                    i++;
+                double number = 0.0;
+                int is_number_negative = line[i] == '-'; // TODO: Talvez trocar isso pra: int number_signal = line[i] == '-' ? -1 : 1;
+
+                if (is_number_negative)
+                {
+                    if (!bjson_expect_is_number(line[++i])) // There must be at least a number after the signal and before the fraction point '.'
+                        bjson_panic("Unexpected char somewhere!");
+                }
 
                 int number_start = i;
-                while (isdigit(line[i]))
-                {
+                for (; isdigit(line[i]); i++)
                     number += (double)(line[i] - 48) / pow(10.0, i - number_start); // Generate the number exponentially from back to front
-
-                    i++;
-                }
                 number *= pow(10.0, i - number_start - 1); // Offset the generated number to the left
 
-                int fraction_start = i;
+                // TODO: Se pa que precisa fazer nesse estilo aqui em todos. Deve ter uma forma melhor de fazer mais eficientemente
+                if (!bjson_expect_is_char(line[i], ".eE", 3))
+                {
+                    if (!bjson_expect_is_char(line[i], ",}] \n\0", 6))
+                        bjson_panic("Unexpected char somewhere!");
+                }
+
+                // Parse the fraction
                 if (line[i] == '.')
                 {
-                    i++;
+                    int fraction_start = i;
 
-                    while (isdigit(line[i]))
+                    if (!bjson_expect_is_number(line[++i])) // There must be at least a number after the fraction point '.'
                     {
+                        // bjson_panic("Unexpected char somewhere!");
+                        fprintf(stderr, "ERROR: Unexpected '%c' at line %d!\n", line[i], current_str + 1); // TODO: Exemplo de como seria um erro mais detalhado
+                    }
+
+                    for (; isdigit(line[i]); i++)
                         number += (line[i] - 48) / pow(10.0, i - fraction_start); // Generate the fraction
 
-                        i++;
+                    if (!bjson_expect_is_char(line[i], "eE", 2))
+                    {
+                        if (!bjson_expect_is_char(line[i], ",}] \n\0", 6))
+                            bjson_panic("Unexpected char somewhere!");
                     }
                 }
 
-                if (is_negative)
+                // Parse the exponent
+                if (line[i] == 'e' || line[i] == 'E')
+                {
+                    int exponent = 0;
+                    int is_exponent_negative = 0; // TODO: Talvez trocar isso pra: int exponent_signal = line[i] == '-' ? -1 : 1;
+
+                    if (bjson_expect_is_char(line[++i], "+-", 2)) // The signal is optional after an 'e' or 'E'
+                        is_exponent_negative = line[i++] == '-';
+
+                    if (!bjson_expect_is_number(line[i])) // There must be at least a number after 'e' or 'E'
+                        bjson_panic("Unexpected char somewhere!");
+
+                    int exponent_start = i;
+                    for (; isdigit(line[i]); i++)
+                        exponent += (double)(line[i] - 48) / pow(10.0, i - exponent_start); // Generate the exponent number exponentially from back to front
+                    exponent *= pow(10.0, i - exponent_start - 1); // Offset the generated exponent number
+
+                    if (is_exponent_negative)
+                        exponent = -exponent;
+                    
+                    number *= pow(10.0, (double)exponent); // Multiply the number by the exponent of 10
+                }
+
+                // TODO: Talvez esse expect possa ser generalizado pra todos os tokens tirando ele pra fora, lembrando que a ',' só 
+                //       pode ser expected caso a thing esteja dentro de um object ou array, e se tiver uma ',' precisa ter outra thing depois
+                if (!bjson_expect_is_char(line[i], ",}] \n\0", 6))
+                    bjson_panic("Unexpected char somewhere!");
+
+                if (is_number_negative)
                     number = -number;
 
                 thing = bjson_thing_create();
@@ -902,7 +976,10 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                 thing->value.number = number;
             }
             else // Ignorable characters
+            {
+                i++;
                 continue;
+            }
             
             // If it is the outer-most thing on the JSON
             if (bjson_thing_stack_is_empty(nested_things))
