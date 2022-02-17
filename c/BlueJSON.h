@@ -31,6 +31,8 @@ https://lihautan.com/json-parser-with-javascript/
 //   features
 // * Talvez printar para o stderr (que é um buffer de output assim como o stdout) caso um expected falhe. A mensagem de erro pode ser algo
 //   como "ERROR: Unexpected ... at line ..."
+// * Pra ficar mais modular, em todos os getters e setters dos arrays e dos objects daria pra deixar mais abstrato, fazendo por exemplo: 
+//   double bjson_object_get_double(bjson_object *object, const char *name) { return bjson_thing_get_as_double(bjson_object_get_thing(object, name)); }
 
 // TODOs URGENTES:
 // !!! Talvez só mecher com bjson_thing no high-level e deixar os objects e arrays por baixo dos panos, por ex: ao invés de bjson_thing_get_object()
@@ -562,29 +564,12 @@ bjson_thing *bjson_object_get_thing(bjson_object *object, const char *name)
 {
     bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
 
-    return thing;
+    return thing; // TODO: Fazer direto: return bjson_thing_list_get_by_name(object->things, name);
 }
 
 char *bjson_object_get_string(bjson_object *object, const char *name, char *buffer, unsigned int size)
 {
-    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
-
-    if (thing != NULL && thing->type == BJSON_STRING)
-    {
-        strncpy(buffer, thing->value.string, size);
-        buffer[size - 1] = '\0';
-
-        return buffer;
-    }
-
-    return NULL;
-}
-
-double bjson_object_get_number(bjson_object *object, const char *name)
-{
-    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
-
-    return thing->value.number;
+    return bjson_thing_get_as_string(bjson_object_get_thing(object, name), buffer, size);
 }
 
 int bjson_object_get_int(bjson_object *object, const char *name)
@@ -599,44 +584,32 @@ float bjson_object_get_float(bjson_object *object, const char *name)
 
 double bjson_object_get_double(bjson_object *object, const char *name)
 {
-    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
-
-    return thing->value.number;
+    return bjson_thing_get_as_double(bjson_object_get_thing(object, name));
 }
 
 bjson_object *bjson_object_get_object(bjson_object *object, const char *name)
 {
-    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
-
-    return (thing == NULL || thing->type != BJSON_OBJECT) ? NULL : thing->value.object;
+    return bjson_thing_get_as_object(bjson_object_get_thing(object, name));
 }
 
 bjson_array *bjson_object_get_array(bjson_object *object, const char *name)
 {
-    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
-
-    return (thing == NULL || thing->type != BJSON_ARRAY) ? NULL : thing->value.array;
+    return bjson_thing_get_as_array(bjson_object_get_thing(object, name));
 }
 
 int bjson_object_is_true(bjson_object *object, const char *name)
 {
-    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
-
-    return thing->type == BJSON_TRUE;
+    return bjson_thing_is_true(bjson_object_get_thing(object, name));
 }
 
 int bjson_object_is_false(bjson_object *object, const char *name)
 {
-    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
-
-    return thing->type == BJSON_FALSE;
+    return bjson_thing_is_false(bjson_object_get_thing(object, name));
 }
 
 int bjson_object_is_null(bjson_object *object, const char *name)
 {
-    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
-
-    return thing->type == BJSON_NULL;
+    return bjson_thing_is_null(bjson_object_get_thing(object, name));
 }
 
 void bjson_object_push_thing(bjson_object *object, bjson_thing *thing)
@@ -670,22 +643,12 @@ bjson_thing *bjson_array_get_thing(bjson_array *array, unsigned int index)
 {
     bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
 
-    return thing;
+    return thing; // TODO: Fazer direto: return bjson_thing_list_get_at(array->things, index);
 }
 
 char *bjson_array_get_string(bjson_array *array, unsigned int index, char *buffer, unsigned int size)
 {
-    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
-
-    if (thing != NULL && thing->type == BJSON_STRING)
-    {
-        strncpy(buffer, thing->value.string, size);
-        buffer[size - 1] = '\0';
-
-        return buffer;
-    }
-
-    return NULL;
+    return bjson_thing_get_as_string(bjson_array_get_thing(array, index), buffer, size);
 }
 
 int bjson_array_get_int(bjson_array *array, unsigned int index)
@@ -700,55 +663,37 @@ float bjson_array_get_float(bjson_array *array, unsigned int index)
 
 double bjson_array_get_double(bjson_array *array, unsigned int index)
 {
-    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
-
-    return thing->value.number;
+    return bjson_thing_get_as_double(bjson_array_get_thing(array, index));
 }
 
 bjson_object *bjson_array_get_object(bjson_array *array, unsigned int index)
 {
-    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
-
-    return (thing == NULL || thing->type != BJSON_OBJECT) ? NULL : thing->value.object;
+    return bjson_thing_get_as_object(bjson_array_get_thing(array, index));
 }
 
 bjson_array *bjson_array_get_array(bjson_array *array, unsigned int index)
 {
-    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
-
-    return (thing == NULL || thing->type != BJSON_ARRAY) ? NULL : thing->value.array;
+    return bjson_thing_get_as_array(bjson_array_get_thing(array, index));
 }
 
 int bjson_array_is_true(bjson_array *array, unsigned int index)
 {
-    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
-
-    return thing->type == BJSON_TRUE;
+    return bjson_thing_is_true(bjson_array_get_thing(array, index));
 }
 
 int bjson_array_is_false(bjson_array *array, unsigned int index)
 {
-    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
-
-    return thing->type == BJSON_FALSE;
+    return bjson_thing_is_false(bjson_array_get_thing(array, index));
 }
 
 int bjson_array_is_null(bjson_array *array, unsigned int index)
 {
-    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
-
-    return thing->type == BJSON_NULL;
+    return bjson_thing_is_null(bjson_array_get_thing(array, index));
 }
 
 void bjson_array_push_thing(bjson_array *array, bjson_thing *thing)
 {
     bjson_thing_list_append(array->things, thing);
-}
-
-void bjson_panic(const char *msg)
-{
-    fprintf(stderr, "ERROR: %s\n", msg);
-    exit(1);
 }
 
 #ifdef BJSON_NO_ERROR_CHECKING
@@ -782,6 +727,12 @@ int bjson_expect_is_number(char c)
 }
 
 #endif
+
+void bjson_panic(const char *msg)
+{
+    fprintf(stderr, "ERROR: %s\n", msg);
+    exit(1);
+}
 
 size_t bjson_string_len(const char *string) // TODO: Talvez trocar string por str
 {
@@ -861,7 +812,7 @@ int bjson_parse_number(const char *number, double *buffer) // TODO: Talvez troca
     int integer_start = number_i;
     for (; isdigit(number[number_i]); number_i++)
         *buffer += (double)(number[number_i] - 48) / pow(10.0, number_i - integer_start); // Generate the number after the floating point, this is needed to mirror it
-    *buffer *= pow(10.0, number_i - integer_start - 1); // Offset the mirrored number to the left side of the floating point
+    *buffer *= pow(10.0, number_i - integer_start - 1);                                   // Offset the mirrored number to the left side of the floating point
 
     // TODO: Se pa que precisa fazer nesse estilo aqui em todos. Deve ter uma forma melhor de fazer mais eficientemente
     if (!bjson_expect_is_char(number[number_i], ".eE", 3))
@@ -905,7 +856,7 @@ int bjson_parse_number(const char *number, double *buffer) // TODO: Talvez troca
         int exponent_start = number_i;
         for (; isdigit(number[number_i]); number_i++)
             exponent += (double)(number[number_i] - 48) / pow(10.0, number_i - exponent_start); // Generate the exponent number after the floating point, this is needed to mirror it
-        exponent *= pow(10.0, number_i - exponent_start - 1);                          // Offset the mirrored exponent number to the left side of the floating point
+        exponent *= pow(10.0, number_i - exponent_start - 1);                                   // Offset the mirrored exponent number to the left side of the floating point
 
         if (is_exponent_negative)
             exponent = -exponent;
@@ -1050,6 +1001,9 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
             }
             else // Ignorable characters
             {
+                if (!bjson_expect_is_char(line[i], ":, \n\0", 5))
+                    bjson_panic("Unexpected char somewhere!");
+
                 i++;
                 continue;
             }
