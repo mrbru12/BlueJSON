@@ -783,25 +783,25 @@ int bjson_expect_is_number(char c)
 
 #endif
 
-size_t bjson_string_len(const char *str)
+size_t bjson_string_len(const char *string) // TODO: Talvez trocar string por str
 {
-    return strchr(str + 1, '"') - (str + 1);
+    return strchr(string + 1, '"') - (string + 1);
 }
 
-int bjson_parse_string(const char *str, char *buffer, unsigned int size)
+int bjson_parse_string(const char *string, char *buffer, unsigned int size) // TODO: Talvez trocar string por string_str
 {
     // TODO: Precisa de mais checks desse tipo (checar se não está no fim da linha, etc...) em outros lugares do parser
-    int str_i = 1, buffer_i = 0;
-    for (; str[str_i] != '"' && str[str_i] != '\0' && buffer_i < size - 1; str_i++, buffer_i++)
+    int string_i = 1, buffer_i = 0;
+    for (; string[string_i] != '"' && string[string_i] != '\0' && buffer_i < size - 1; string_i++, buffer_i++)
     {
-        if (str[str_i] == '\\')
+        if (string[string_i] == '\\')
         {
             // TODO: Talvez abandonar a ideia de checar erros (ou pensar em outra maneira mais adequada) porque não da pra separar as funções direito
-            if (!bjson_expect_is_char(str[++str_i], "\"\\/bfnrtu", 9)) // TODO: Talvez fazer if (bjson_expect_is_...(...)) e colocar o panic no else em tudo
+            if (!bjson_expect_is_char(string[++string_i], "\"\\/bfnrtu", 9)) // TODO: Talvez fazer if (bjson_expect_is_...(...)) e colocar o panic no else em tudo
                 bjson_panic("Unexpected char somewhere!");
             else
             {
-                switch (str[str_i])
+                switch (string[string_i])
                 {
                 case 'b':
                     buffer[buffer_i] = '\b';
@@ -828,17 +828,100 @@ int bjson_parse_string(const char *str, char *buffer, unsigned int size)
                     break;
 
                 default:
-                    buffer[buffer_i] = str[str_i]; // The cases that left are not any special code and can be just copied
+                    buffer[buffer_i] = string[string_i]; // The cases that left are not any special code and can be just copied
                 }
             }
         }
         else
-            buffer[buffer_i] = str[str_i];
+            buffer[buffer_i] = string[string_i];
     }
-    
+
     buffer[buffer_i] = '\0';
 
-    return str_i + 1;
+    return string_i + 1;
+}
+
+int bjson_parse_number(const char *number, double *buffer) // TODO: Talvez trocar number por number_str
+{
+    // TODO: Precisa de uma boa refatorada nessa parte de números pra deixar mais claro o que ta acontecendo, apesar de estar bonitin *-*
+    // TODO: Precisa fazer mensagens de erro correspondentes pra cada tipo de erro e talvez mostrar mais infos nelas como a linha que deu erro
+
+    int number_i = 0; // Number string iterator
+
+    *buffer = 0.0;
+    int is_number_negative = number[0] == '-'; // TODO: Talvez trocar isso pra: int number_signal = line[i] == '-' ? -1 : 1;
+
+    if (is_number_negative)
+    {
+        if (!bjson_expect_is_number(number[++number_i])) // There must be at least a digit after the signal and before the fraction point '.'
+            bjson_panic("Unexpected char somewhere!");
+    }
+
+    // Parse the integer part of the number
+    int integer_start = number_i;
+    for (; isdigit(number[number_i]); number_i++)
+        *buffer += (double)(number[number_i] - 48) / pow(10.0, number_i - integer_start); // Generate the number after the floating point, this is needed to mirror it
+    *buffer *= pow(10.0, number_i - integer_start - 1); // Offset the mirrored number to the left side of the floating point
+
+    // TODO: Se pa que precisa fazer nesse estilo aqui em todos. Deve ter uma forma melhor de fazer mais eficientemente
+    if (!bjson_expect_is_char(number[number_i], ".eE", 3))
+    {
+        if (!bjson_expect_is_char(number[number_i], ",}] \n\0", 6))
+            bjson_panic("Unexpected char somewhere!");
+    }
+
+    // Parse the fraction part of the number
+    if (number[number_i] == '.')
+    {
+        if (!bjson_expect_is_number(number[++number_i])) // There must be at least a digit after the fraction point '.'
+        {
+            bjson_panic("Unexpected char somewhere!");
+            // fprintf(stderr, "ERROR: Unexpected '%c' at line %d!\n", line[i], current_str + 1); // TODO: Exemplo de como seria um erro mais detalhado (que não funcionaria nessa func separada)
+        }
+
+        int fraction_start = number_i;
+        for (; isdigit(number[number_i]); number_i++)
+            *buffer += (number[number_i] - 48) / pow(10.0, number_i - fraction_start + 1); // Generate the fraction
+
+        if (!bjson_expect_is_char(number[number_i], "eE", 2))
+        {
+            if (!bjson_expect_is_char(number[number_i], ",}] \n\0", 6))
+                bjson_panic("Unexpected char somewhere!");
+        }
+    }
+
+    // Parse the exponent part of the number
+    if (number[number_i] == 'e' || number[number_i] == 'E')
+    {
+        double exponent = 0.0;
+        int is_exponent_negative = 0; // TODO: Talvez trocar isso pra: int exponent_signal = line[i] == '-' ? -1 : 1;
+
+        if (bjson_expect_is_char(number[++number_i], "+-", 2)) // The signal is optional after an 'e' or 'E'
+            is_exponent_negative = number[number_i++] == '-';
+
+        if (!bjson_expect_is_number(number[number_i])) // There must be at least a digit after 'e' or 'E'
+            bjson_panic("Unexpected char somewhere!");
+
+        int exponent_start = number_i;
+        for (; isdigit(number[number_i]); number_i++)
+            exponent += (double)(number[number_i] - 48) / pow(10.0, number_i - exponent_start); // Generate the exponent number after the floating point, this is needed to mirror it
+        exponent *= pow(10.0, number_i - exponent_start - 1);                          // Offset the mirrored exponent number to the left side of the floating point
+
+        if (is_exponent_negative)
+            exponent = -exponent;
+
+        *buffer *= pow(10.0, (double)exponent); // Multiply the number by the exponent of 10
+    }
+
+    // TODO: Talvez esse expect possa ser generalizado pra todos os tokens tirando ele pra fora, lembrando que a ',' só
+    //       pode ser expected caso a thing esteja dentro de um object ou array, e se tiver uma ',' precisa ter outra thing depois
+    if (!bjson_expect_is_char(number[number_i], ",}] \n\0", 6))
+        bjson_panic("Unexpected char somewhere!");
+
+    if (is_number_negative) // TODO: Talvez seja legal eu começar a colocar ifs assim em 1 só linha, exemplo: if (is_number_negative) *buffer = -(*buffer);
+        *buffer = -(*buffer);
+
+    return number_i;
 }
 
 // TODO: Separar mais algumas partes dessa função em subfunções pra ficar um pouco mais organizado
@@ -879,7 +962,7 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
 
                     i += string_len + 2;
                     */
-                    
+
                     current_thing_name = malloc(string_len + 1);
                     i += bjson_parse_string(line + i, current_thing_name, string_len + 1);
 
@@ -961,84 +1044,9 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
             }
             else if (isdigit(line[i]) || line[i] == '-') // Number
             {
-                // TODO: Precisa de uma boa refatorada nessa parte de números pra deixar mais claro o que ta acontecendo, apesar de estar bonitin *-*
-                // TODO: Precisa fazer mensagens de erro correspondentes pra cada tipo de erro e talvez mostrar mais infos nelas como a linha que deu erro
-
-                double number = 0.0;
-                int is_number_negative = line[i] == '-'; // TODO: Talvez trocar isso pra: int number_signal = line[i] == '-' ? -1 : 1;
-
-                if (is_number_negative)
-                {
-                    if (!bjson_expect_is_number(line[++i])) // There must be at least a number after the signal and before the fraction point '.'
-                        bjson_panic("Unexpected char somewhere!");
-                }
-
-                int number_start = i;
-                for (; isdigit(line[i]); i++)
-                    number += (double)(line[i] - 48) / pow(10.0, i - number_start); // Generate the number after the floating point, this is needed to mirror it
-                number *= pow(10.0, i - number_start - 1);                          // Offset the mirrored number to the left side of the floating point
-
-                // TODO: Se pa que precisa fazer nesse estilo aqui em todos. Deve ter uma forma melhor de fazer mais eficientemente
-                if (!bjson_expect_is_char(line[i], ".eE", 3))
-                {
-                    if (!bjson_expect_is_char(line[i], ",}] \n\0", 6))
-                        bjson_panic("Unexpected char somewhere!");
-                }
-
-                // Parse the fraction
-                if (line[i] == '.')
-                {
-                    if (!bjson_expect_is_number(line[++i])) // There must be at least a number after the fraction point '.'
-                    {
-                        // bjson_panic("Unexpected char somewhere!");
-                        fprintf(stderr, "ERROR: Unexpected '%c' at line %d!\n", line[i], current_str + 1); // TODO: Exemplo de como seria um erro mais detalhado
-                    }
-
-                    int fraction_start = i;
-                    for (; isdigit(line[i]); i++)
-                        number += (line[i] - 48) / pow(10.0, i - fraction_start + 1); // Generate the fraction
-
-                    if (!bjson_expect_is_char(line[i], "eE", 2))
-                    {
-                        if (!bjson_expect_is_char(line[i], ",}] \n\0", 6))
-                            bjson_panic("Unexpected char somewhere!");
-                    }
-                }
-
-                // Parse the exponent
-                if (line[i] == 'e' || line[i] == 'E')
-                {
-                    double exponent = 0.0;
-                    int is_exponent_negative = 0; // TODO: Talvez trocar isso pra: int exponent_signal = line[i] == '-' ? -1 : 1;
-
-                    if (bjson_expect_is_char(line[++i], "+-", 2)) // The signal is optional after an 'e' or 'E'
-                        is_exponent_negative = line[i++] == '-';
-
-                    if (!bjson_expect_is_number(line[i])) // There must be at least a number after 'e' or 'E'
-                        bjson_panic("Unexpected char somewhere!");
-
-                    int exponent_start = i;
-                    for (; isdigit(line[i]); i++)
-                        exponent += (double)(line[i] - 48) / pow(10.0, i - exponent_start); // Generate the exponent number after the floating point, this is needed to mirror it
-                    exponent *= pow(10.0, i - exponent_start - 1);                          // Offset the mirrored exponent number to the left side of the floating point
-
-                    if (is_exponent_negative)
-                        exponent = -exponent;
-
-                    number *= pow(10.0, (double)exponent); // Multiply the number by the exponent of 10
-                }
-
-                // TODO: Talvez esse expect possa ser generalizado pra todos os tokens tirando ele pra fora, lembrando que a ',' só
-                //       pode ser expected caso a thing esteja dentro de um object ou array, e se tiver uma ',' precisa ter outra thing depois
-                if (!bjson_expect_is_char(line[i], ",}] \n\0", 6))
-                    bjson_panic("Unexpected char somewhere!");
-
-                if (is_number_negative)
-                    number = -number;
-
                 thing = bjson_thing_create();
                 thing->type = BJSON_NUMBER;
-                thing->value.number = number;
+                i += bjson_parse_number(line + i, &thing->value.number);
             }
             else // Ignorable characters
             {
