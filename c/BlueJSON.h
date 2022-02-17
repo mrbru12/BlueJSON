@@ -10,7 +10,7 @@ https://lihautan.com/json-parser-with-javascript/
 // TODOs:
 // * Fazer um sistema de checagem de erro com uma função tipo bjson_expect(const char *tokens). Dai, por exemplo, depois de encontrar
 //   o começo de um objeto '{' teria que ter um bjson_expect(""}"), ou seja, ele esperaria que tivesse uma '"' (significando o
-//   começo de uma string), ou um '}' (significando o final do objeto, que no caso seria um objeto vazio), os espaços em branco ' ' 
+//   começo de uma string), ou um '}' (significando o final do objeto, que no caso seria um objeto vazio), os espaços em branco ' '
 //   a função vai ignorar. Como exemplo ver aquele site que checa se o JSON ta certo
 // * Precisa urgentemente dar uma refatorada em praticamente tudo
 // * Dar uma documentada boa em tudo
@@ -29,13 +29,13 @@ https://lihautan.com/json-parser-with-javascript/
 // * A única coisa que falta pro parser fica completo é terminar as nuancias de parsar strings (parsar os \n, \\, \t, \", ...) e terminar as
 //   nuancias de parsar numbers (como a parte do 'e', 'E', ...). Depois que eu acabar essas coisas da pra focar em refatorar e fazer as outras
 //   features
-// * Talvez printar para o stderr (que é um buffer de output assim como o stdout) caso um expected falhe. A mensagem de erro pode ser algo 
+// * Talvez printar para o stderr (que é um buffer de output assim como o stdout) caso um expected falhe. A mensagem de erro pode ser algo
 //   como "ERROR: Unexpected ... at line ..."
 
 // TODOs URGENTES:
 // !!! Talvez só mecher com bjson_thing no high-level e deixar os objects e arrays por baixo dos panos, por ex: ao invés de bjson_thing_get_object()
-//     retornar um bjson_object* ela vai rotornar uma bjson_thing* ai a função bjson_object_get_string(bjson_thing *object, ...) vai aceitar a thing 
-//     como classe parametro, o que deixaria tudo mais organizado pq provavelmente reduziria mto a redunância dos getters e setters 
+//     retornar um bjson_object* ela vai rotornar uma bjson_thing* ai a função bjson_object_get_string(bjson_thing *object, ...) vai aceitar a thing
+//     como classe parametro, o que deixaria tudo mais organizado pq provavelmente reduziria mto a redunância dos getters e setters
 // !!! Talvez tirar todos os setters e ao invés deles o user vai precisar chamar funções específicas tipo bjson_thing_create_string(const char *string)
 //     que vão retornar um pointer pra bjson_thing criada. Dessa forma se o user quiser mecher em um json que já esteja parsado, ele vai ter que primeiro
 //     destruir a thing que ele quer mudar e alocar a nova no lugar da antiga
@@ -43,7 +43,7 @@ https://lihautan.com/json-parser-with-javascript/
 #ifndef BJSON_BLUEJSON_H
 #define BJSON_BLUEJSON_H
 
-// A thing can be any JSON value, having a name if it belongs to an object 
+// A thing can be any JSON value, having a name if it belongs to an object
 typedef struct bjson_thing bjson_thing;
 
 // In JSON, objects are collections of tuples with (name, value)
@@ -190,7 +190,7 @@ void bjson_thing_destroy(bjson_thing *thing)
 {
     if (thing->name != NULL)
         free(thing->name);
-    
+
     if (thing->type == BJSON_STRING)
         free(thing->value.string);
     else if (thing->type == BJSON_OBJECT)
@@ -213,7 +213,7 @@ void bjson_thing_destroy_value(bjson_thing *thing)
     thing->type = BJSON_NOTHING;
 }
 
- // TODO: Não sei se eu gosto muito dessa função existir :/ Pelo menos não do jeito que ela tá agora
+// TODO: Não sei se eu gosto muito dessa função existir :/ Pelo menos não do jeito que ela tá agora
 void bjson_thing_print(bjson_thing *thing)
 {
     switch (thing->type)
@@ -233,7 +233,7 @@ void bjson_thing_print(bjson_thing *thing)
     case BJSON_FALSE:
         printf("false\n");
         break;
-    
+
     case BJSON_NULL:
         printf("null\n");
         break;
@@ -428,7 +428,7 @@ void bjson_thing_list_append(bjson_thing_list *list, bjson_thing *thing)
     bjson_thing_list_node *node = malloc(sizeof(bjson_thing_list_node));
     node->thing = thing;
     node->next = NULL;
-    
+
     if (bjson_thing_list_is_empty(list))
         list->start = node;
     else
@@ -491,7 +491,7 @@ void bjson_thing_stack_destroy(bjson_thing_stack *stack)
 {
     bjson_thing_stack_node *node = stack->top;
     while (node != NULL)
-    {   
+    {
         bjson_thing_stack_node *temp_node = node;
         node = node->link;
 
@@ -518,7 +518,7 @@ void bjson_thing_stack_push(bjson_thing_stack *stack, bjson_thing *thing)
 bjson_thing *bjson_thing_stack_pop(bjson_thing_stack *stack)
 {
     bjson_thing_stack_node *node = stack->top;
-    
+
     bjson_thing *thing = NULL;
     if (!bjson_thing_stack_is_empty(stack))
     {
@@ -568,7 +568,7 @@ bjson_thing *bjson_object_get_thing(bjson_object *object, const char *name)
 char *bjson_object_get_string(bjson_object *object, const char *name, char *buffer, unsigned int size)
 {
     bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
-    
+
     if (thing != NULL && thing->type == BJSON_STRING)
     {
         strncpy(buffer, thing->value.string, size);
@@ -653,7 +653,7 @@ bjson_array *bjson_array_create()
 {
     bjson_array *array = malloc(sizeof(bjson_array));
     array->things = bjson_thing_list_create();
-    
+
     return array;
 }
 
@@ -662,7 +662,7 @@ void bjson_array_destroy(bjson_array *array)
     for (bjson_thing_list_node *node = array->things->start; node != NULL; node = node->next)
         bjson_thing_destroy(node->thing);
 
-    bjson_thing_list_destroy(array->things);   
+    bjson_thing_list_destroy(array->things);
     free(array);
 }
 
@@ -676,7 +676,7 @@ bjson_thing *bjson_array_get_thing(bjson_array *array, unsigned int index)
 char *bjson_array_get_string(bjson_array *array, unsigned int index, char *buffer, unsigned int size)
 {
     bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
-    
+
     if (thing != NULL && thing->type == BJSON_STRING)
     {
         strncpy(buffer, thing->value.string, size);
@@ -745,11 +745,6 @@ void bjson_array_push_thing(bjson_array *array, bjson_thing *thing)
     bjson_thing_list_append(array->things, thing);
 }
 
-size_t bjson_string_len(const char *str)
-{
-    return strchr(str + 1, '"') - (str + 1);
-}
-
 void bjson_panic(const char *msg)
 {
     fprintf(stderr, "ERROR: %s\n", msg);
@@ -758,7 +753,7 @@ void bjson_panic(const char *msg)
 
 #ifdef BJSON_NO_ERROR_CHECKING
 
-int bjson_expect_is_char(char c, const char *expected_chars) 
+int bjson_expect_is_char(char c, const char *expected_chars, unsigned int count)
 {
     return 1;
 }
@@ -788,6 +783,65 @@ int bjson_expect_is_number(char c)
 
 #endif
 
+size_t bjson_string_len(const char *str)
+{
+    return strchr(str + 1, '"') - (str + 1);
+}
+
+int bjson_parse_string(const char *str, char *buffer, unsigned int size)
+{
+    // TODO: Precisa de mais checks desse tipo (checar se não está no fim da linha, etc...) em outros lugares do parser
+    int str_i = 1, buffer_i = 0;
+    for (; str[str_i] != '"' && str[str_i] != '\0' && buffer_i < size - 1; str_i++, buffer_i++)
+    {
+        if (str[str_i] == '\\')
+        {
+            // TODO: Talvez abandonar a ideia de checar erros (ou pensar em outra maneira mais adequada) porque não da pra separar as funções direito
+            if (!bjson_expect_is_char(str[++str_i], "\"\\/bfnrtu", 9)) // TODO: Talvez fazer if (bjson_expect_is_...(...)) e colocar o panic no else em tudo
+                bjson_panic("Unexpected char somewhere!");
+            else
+            {
+                switch (str[str_i])
+                {
+                case 'b':
+                    buffer[buffer_i] = '\b';
+                    break;
+
+                case 'f':
+                    buffer[buffer_i] = '\f';
+                    break;
+
+                case 'n':
+                    buffer[buffer_i] = '\n';
+                    break;
+
+                case 'r':
+                    buffer[buffer_i] = '\r';
+                    break;
+
+                case 't':
+                    buffer[buffer_i] = '\t';
+                    break;
+
+                case 'u':
+                    // TODO: buffer[i - 1] = '\u1234';
+                    break;
+
+                default:
+                    buffer[buffer_i] = str[str_i]; // The cases that left are not any special code and can be just copied
+                }
+            }
+        }
+        else
+            buffer[buffer_i] = str[str_i];
+    }
+    
+    buffer[buffer_i] = '\0';
+
+    return str_i + 1;
+}
+
+// TODO: Separar mais algumas partes dessa função em subfunções pra ficar um pouco mais organizado
 bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
 {
     // TODO: Talvez retirar essa variável pq daria pra retornar a root thing direto pelo stack de nested things
@@ -796,33 +850,38 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
     bjson_thing_stack *nested_things = bjson_thing_stack_create();
 
     // TODO: Talvez quando eu refatorar e tirar a geração de thing pra mais pra fora não precise mais dessa var.
-    //       Isso vai deixar o código mais legível e mais eficiênte, já que, quando necessário. o nome vai estar 
-    //       sendo copiado direto pra dentro da thing, e não pra essa variável temporária pra depois ser recopiado 
+    //       Isso vai deixar o código mais legível e mais eficiênte, já que, quando necessário. o nome vai estar
+    //       sendo copiado direto pra dentro da thing, e não pra essa variável temporária pra depois ser recopiado
     //       pra thing
     bjson_thing *thing = NULL;
     char *current_thing_name = NULL;
-    
+
     for (int current_str = 0; current_str < n; current_str++)
     {
         const char *line = strs[current_str];
-        
-        int i = 0; 
+
+        int i = 0;
         while (i < strlen(line))
         {
             // TODO: Nas strings, checar quando tiver caracateres de escape e especiais, tipo '\"' e '\n', etc...
-            if (line[i] == '"') 
+            if (line[i] == '"')
             {
                 size_t string_len = bjson_string_len(line + i);
 
-                if (current_thing_name == NULL && 
-                    !bjson_thing_stack_is_empty(nested_things) && 
+                if (current_thing_name == NULL &&
+                    !bjson_thing_stack_is_empty(nested_things) &&
                     bjson_thing_stack_peek(nested_things)->type != BJSON_ARRAY) // Name
                 {
+                    /*
                     current_thing_name = malloc(string_len + 1);
                     strncpy(current_thing_name, line + i + 1, string_len);
                     current_thing_name[string_len] = '\0';
-                    
+
                     i += string_len + 2;
+                    */
+                    
+                    current_thing_name = malloc(string_len + 1);
+                    i += bjson_parse_string(line + i, current_thing_name, string_len + 1);
 
                     continue;
                 }
@@ -832,14 +891,21 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                     //       como quando o parser encontrar um objeto mudar para bjson_thing_set_object(thing, bjson_object_create()). Agora faria bem mais sentido
                     //       só deixar usar um setter em uma thing caso o value_type dela seja BJSON_NOTHING (ou algo do tipo) e ela esteja totalmente "limpa"
 
+                    /*
                     thing = bjson_thing_create();
-                    thing->type = BJSON_STRING; 
+                    thing->type = BJSON_STRING;
 
                     thing->value.string = malloc(string_len + 1);
                     strncpy(thing->value.string, line + i + 1, string_len);
                     thing->value.string[string_len] = '\0';
 
                     i += string_len + 2;
+                    */
+
+                    thing = bjson_thing_create();
+                    thing->type = BJSON_STRING;
+                    thing->value.string = malloc(string_len + 1);
+                    i += bjson_parse_string(line + i, thing->value.string, string_len + 1);
                 }
             }
             else if (line[i] == '{') // Object begin
@@ -883,8 +949,8 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
             {
                 thing = bjson_thing_create();
                 thing->type = BJSON_FALSE;
-                
-                i += 5;      
+
+                i += 5;
             }
             else if (strncmp(line + i, "null", 4) == 0) // Null
             {
@@ -895,8 +961,8 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
             }
             else if (isdigit(line[i]) || line[i] == '-') // Number
             {
-                 // TODO: Precisa de uma boa refatorada nessa parte de números pra deixar mais claro o que ta acontecendo, apesar de estar bonitin *-*
-                 // TODO: Precisa fazer mensagens de erro correspondentes pra cada tipo de erro e talvez mostrar mais infos nelas como a linha que deu erro
+                // TODO: Precisa de uma boa refatorada nessa parte de números pra deixar mais claro o que ta acontecendo, apesar de estar bonitin *-*
+                // TODO: Precisa fazer mensagens de erro correspondentes pra cada tipo de erro e talvez mostrar mais infos nelas como a linha que deu erro
 
                 double number = 0.0;
                 int is_number_negative = line[i] == '-'; // TODO: Talvez trocar isso pra: int number_signal = line[i] == '-' ? -1 : 1;
@@ -909,8 +975,8 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
 
                 int number_start = i;
                 for (; isdigit(line[i]); i++)
-                    number += (double)(line[i] - 48) / pow(10.0, i - number_start); // Generate the number exponentially from back to front
-                number *= pow(10.0, i - number_start - 1); // Offset the generated number to the left
+                    number += (double)(line[i] - 48) / pow(10.0, i - number_start); // Generate the number after the floating point, this is needed to mirror it
+                number *= pow(10.0, i - number_start - 1);                          // Offset the mirrored number to the left side of the floating point
 
                 // TODO: Se pa que precisa fazer nesse estilo aqui em todos. Deve ter uma forma melhor de fazer mais eficientemente
                 if (!bjson_expect_is_char(line[i], ".eE", 3))
@@ -922,16 +988,15 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                 // Parse the fraction
                 if (line[i] == '.')
                 {
-                    int fraction_start = i;
-
                     if (!bjson_expect_is_number(line[++i])) // There must be at least a number after the fraction point '.'
                     {
                         // bjson_panic("Unexpected char somewhere!");
                         fprintf(stderr, "ERROR: Unexpected '%c' at line %d!\n", line[i], current_str + 1); // TODO: Exemplo de como seria um erro mais detalhado
                     }
 
+                    int fraction_start = i;
                     for (; isdigit(line[i]); i++)
-                        number += (line[i] - 48) / pow(10.0, i - fraction_start); // Generate the fraction
+                        number += (line[i] - 48) / pow(10.0, i - fraction_start + 1); // Generate the fraction
 
                     if (!bjson_expect_is_char(line[i], "eE", 2))
                     {
@@ -943,7 +1008,7 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                 // Parse the exponent
                 if (line[i] == 'e' || line[i] == 'E')
                 {
-                    int exponent = 0;
+                    double exponent = 0.0;
                     int is_exponent_negative = 0; // TODO: Talvez trocar isso pra: int exponent_signal = line[i] == '-' ? -1 : 1;
 
                     if (bjson_expect_is_char(line[++i], "+-", 2)) // The signal is optional after an 'e' or 'E'
@@ -954,16 +1019,16 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
 
                     int exponent_start = i;
                     for (; isdigit(line[i]); i++)
-                        exponent += (double)(line[i] - 48) / pow(10.0, i - exponent_start); // Generate the exponent number exponentially from back to front
-                    exponent *= pow(10.0, i - exponent_start - 1); // Offset the generated exponent number
+                        exponent += (double)(line[i] - 48) / pow(10.0, i - exponent_start); // Generate the exponent number after the floating point, this is needed to mirror it
+                    exponent *= pow(10.0, i - exponent_start - 1);                          // Offset the mirrored exponent number to the left side of the floating point
 
                     if (is_exponent_negative)
                         exponent = -exponent;
-                    
+
                     number *= pow(10.0, (double)exponent); // Multiply the number by the exponent of 10
                 }
 
-                // TODO: Talvez esse expect possa ser generalizado pra todos os tokens tirando ele pra fora, lembrando que a ',' só 
+                // TODO: Talvez esse expect possa ser generalizado pra todos os tokens tirando ele pra fora, lembrando que a ',' só
                 //       pode ser expected caso a thing esteja dentro de um object ou array, e se tiver uma ',' precisa ter outra thing depois
                 if (!bjson_expect_is_char(line[i], ",}] \n\0", 6))
                     bjson_panic("Unexpected char somewhere!");
@@ -980,7 +1045,7 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                 i++;
                 continue;
             }
-            
+
             // If it is the outer-most thing on the JSON
             if (bjson_thing_stack_is_empty(nested_things))
             {
@@ -1024,22 +1089,22 @@ bjson_thing *bjson_read_file(const char *path)
 {
     FILE *file = fopen(path, "r");
 
-    // Fuck matrices, they should obviously be an array of arrays, being a char**. But they aren't! They are 
+    // Fuck matrices, they should obviously be an array of arrays, being a char**. But they aren't! They are
     // a fucking contiguous array, a char*, and the only diference from normal arrays is in our imagination
     char *lines[BJSON_FILE_MAX_LINES];
     unsigned int n = 0;
     while (n < BJSON_FILE_MAX_LINES)
     {
         lines[n] = malloc(BJSON_FILE_MAX_LINE_SIZE);
-        
+
         if (fgets(lines[n], BJSON_FILE_MAX_LINE_SIZE, file) == NULL)
             break;
 
         n++;
     }
-    
+
     bjson_thing *root_thing = bjson_read_strings((const char **)lines, n);
-    
+
     for (int i = 0; i < n + 1; i++)
         free(lines[i]);
 
