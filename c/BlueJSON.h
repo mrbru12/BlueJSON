@@ -19,28 +19,11 @@ https://lihautan.com/json-parser-with-javascript/
 //   créditos das imagens que eu usar
 // * Reduzir ao máximo o número de #includes
 // * Adicionar uma licença no começo desse arquivo
-// * Talvez voltar pra C++ e refazer o BlueJSON lá, que dai eu posso deixar mais bonito usando operator overloading e polimorfismo. Daria pra
-//   fazer por exemplo: root_thing = BlueJSON::readFile("teste.json"); camiseta = root_thing["arrayzin"][5]["Pessoa"]["Roupas"][1]
 // * Talvez no Array e no Object mudar os nomes dos getters e setters pra ..._find_get_...() e ..._find_set_...()
 // * Talvez olhar nos commits antigos no Github e pegar de volta alguns TODOs que eu tirei pq pensei que n ia mais precisar
 // * Seria interessante se os setters retornassem o objeto pra poder fazer várias operações encadeadas em uma única linha
 // * Seria legal mudar o design do projeto inteiro e fazer tudo estilo funções C, teria tipo fprintjson(FILE *file, ...)
 // * Talvez mudar de bjson_read_...() pra bjson_load_...() porque se pa que faz mais sentido
-// * A única coisa que falta pro parser fica completo é terminar as nuancias de parsar strings (parsar os \n, \\, \t, \", ...) e terminar as
-//   nuancias de parsar numbers (como a parte do 'e', 'E', ...). Depois que eu acabar essas coisas da pra focar em refatorar e fazer as outras
-//   features
-// * Talvez printar para o stderr (que é um buffer de output assim como o stdout) caso um expected falhe. A mensagem de erro pode ser algo
-//   como "ERROR: Unexpected ... at line ..."
-// * Pra ficar mais modular, em todos os getters e setters dos arrays e dos objects daria pra deixar mais abstrato, fazendo por exemplo: 
-//   double bjson_object_get_double(bjson_object *object, const char *name) { return bjson_thing_get_as_double(bjson_object_get_thing(object, name)); }
-
-// TODOs URGENTES:
-// !!! Talvez só mecher com bjson_thing no high-level e deixar os objects e arrays por baixo dos panos, por ex: ao invés de bjson_thing_get_object()
-//     retornar um bjson_object* ela vai rotornar uma bjson_thing* ai a função bjson_object_get_string(bjson_thing *object, ...) vai aceitar a thing
-//     como classe parametro, o que deixaria tudo mais organizado pq provavelmente reduziria mto a redunância dos getters e setters
-// !!! Talvez tirar todos os setters e ao invés deles o user vai precisar chamar funções específicas tipo bjson_thing_create_string(const char *string)
-//     que vão retornar um pointer pra bjson_thing criada. Dessa forma se o user quiser mecher em um json que já esteja parsado, ele vai ter que primeiro
-//     destruir a thing que ele quer mudar e alocar a nova no lugar da antiga
 
 #ifndef BJSON_BLUEJSON_H
 #define BJSON_BLUEJSON_H
@@ -75,9 +58,7 @@ typedef union
 } bjson_value;
 
 bjson_thing *bjson_thing_create();
-void bjson_thing_destroy(bjson_thing *thing); // TODO: Aparentemente tem algo de errado nessa função, se pá q ela não tá limpando direito, dar uma testada melhor
-
-void bjson_thing_print(bjson_thing *thing);
+void bjson_thing_destroy(bjson_thing *thing);
 
 char *bjson_thing_get_name(bjson_thing *thing, char *buffer, unsigned int size);
 bjson_value_type bjson_thing_get_value_type(bjson_thing *thing);
@@ -156,9 +137,6 @@ bjson_thing *bjson_read_file(const char *path);
 
 // void bjson_write_file(bjson_thing *thing, const char *path);
 
-// Prints the whole JSON structure from root
-void bjson_print(bjson_thing *root);
-
 #endif
 
 #ifdef BJSON_IMPLEMENTATION
@@ -213,36 +191,6 @@ void bjson_thing_destroy_value(bjson_thing *thing)
         bjson_array_destroy(thing->value.array);
 
     thing->type = BJSON_NOTHING;
-}
-
-// TODO: Não sei se eu gosto muito dessa função existir :/ Pelo menos não do jeito que ela tá agora
-void bjson_thing_print(bjson_thing *thing)
-{
-    switch (thing->type)
-    {
-    case BJSON_STRING:
-        printf("%s\n", thing->value.string);
-        break;
-
-    case BJSON_NUMBER:
-        printf("%d\n", (int)thing->value.number);
-        break;
-
-    case BJSON_TRUE:
-        printf("true\n");
-        break;
-
-    case BJSON_FALSE:
-        printf("false\n");
-        break;
-
-    case BJSON_NULL:
-        printf("null\n");
-        break;
-
-    default:
-        break;
-    }
 }
 
 char *bjson_thing_get_name(bjson_thing *thing, char *buffer, unsigned int size)
@@ -562,9 +510,7 @@ void bjson_object_destroy(bjson_object *object)
 
 bjson_thing *bjson_object_get_thing(bjson_object *object, const char *name)
 {
-    bjson_thing *thing = bjson_thing_list_get_by_name(object->things, name);
-
-    return thing; // TODO: Fazer direto: return bjson_thing_list_get_by_name(object->things, name);
+    return bjson_thing_list_get_by_name(object->things, name);
 }
 
 char *bjson_object_get_string(bjson_object *object, const char *name, char *buffer, unsigned int size)
@@ -641,9 +587,7 @@ void bjson_array_destroy(bjson_array *array)
 
 bjson_thing *bjson_array_get_thing(bjson_array *array, unsigned int index)
 {
-    bjson_thing *thing = bjson_thing_list_get_at(array->things, index);
-
-    return thing; // TODO: Fazer direto: return bjson_thing_list_get_at(array->things, index);
+    return bjson_thing_list_get_at(array->things, index);
 }
 
 char *bjson_array_get_string(bjson_array *array, unsigned int index, char *buffer, unsigned int size)
@@ -1073,36 +1017,6 @@ bjson_thing *bjson_read_file(const char *path)
     fclose(file);
 
     return root_thing;
-}
-
-// TODO: Essa função tá meio gambiarra por enquanto, dar uma melhorada nela futuramente
-void bjson_print(bjson_thing *root)
-{
-    static int nested_depth = 0;
-
-    if (root->type == BJSON_OBJECT || root->type == BJSON_ARRAY)
-    {
-        for (bjson_thing_list_node *node = (root->type == BJSON_OBJECT) ? root->value.object->things->start : root->value.array->things->start; node != NULL; node = node->next)
-        {
-            bjson_thing *thing = node->thing;
-
-            if (thing->type == BJSON_OBJECT || thing->type == BJSON_ARRAY)
-            {
-                nested_depth++;
-                bjson_print(thing);
-            }
-            else
-            {
-                for (int i = 0; i < nested_depth; i++)
-                    printf("  ");
-                bjson_thing_print(thing);
-            }
-        }
-
-        nested_depth--;
-    }
-    else
-        bjson_thing_print(root);
 }
 
 #endif
