@@ -398,6 +398,15 @@ void bjson_thing_list_append(bjson_thing_list *list, bjson_thing *thing)
 
 // void bjson_thing_list_remove(bjson_thing_list *list, unsigned int index)
 
+unsigned int bjson_thing_list_get_len(bjson_thing_list *list)
+{
+    int len = 0;
+    for (bjson_thing_list_node *node = list->start; node != NULL; node = node->next, len++)
+        ;
+
+    return len;
+}
+
 bjson_thing *bjson_thing_list_get_at(bjson_thing_list *list, unsigned int index)
 {
     bjson_thing_list_node *node = list->start;
@@ -1186,7 +1195,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                 bjson_dynstr_cat_str(string, "[\n");
 
             bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
-            
+
             bjson_dynstr_destroy(string);
         }
 
@@ -1200,18 +1209,21 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
             for (int i = 0; node != NULL && i < bjson_thing_get_as_int(top_thing_iterator); i++)
                 node = node->next;
 
-            for (int i = 1; node != NULL; node = node->next, i++)
+            for (; node != NULL; node = node->next)
             {
+                // Increment the current iterator as we walk trough the things
+                top_thing_iterator->value.number++;
+
                 if (node->thing->type == BJSON_OBJECT || node->thing->type == BJSON_ARRAY)
                 {
                     // Print the start of the Object or Array
                     {
                         bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
-                        
+
                         // Add the tabs
-                        for (int i = 0; i < nested_depth; i++)
+                        for (int tab_count = 0; tab_count < nested_depth; tab_count++)
                         {
-                            for (int j = 0; j < BJSON_WRITE_TAB_SIZE; j++)
+                            for (int space_count = 0; space_count < BJSON_WRITE_TAB_SIZE; space_count++)
                                 bjson_dynstr_cat_str(string, " ");
                         }
 
@@ -1230,11 +1242,9 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                             bjson_dynstr_cat_str(string, "[\n");
 
                         bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
-                        
+
                         bjson_dynstr_destroy(string);
                     }
-
-                    top_thing_iterator->value.number += (double)i; // Increment the current iterator with the amount walked
 
                     // Push the thing and it's iterator
                     {
@@ -1254,9 +1264,9 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                     bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
 
                     // Add the tabs
-                    for (int i = 0; i < nested_depth; i++)
+                    for (int tab_count = 0; tab_count < nested_depth; tab_count++)
                     {
-                        for (int j = 0; j < BJSON_WRITE_TAB_SIZE; j++)
+                        for (int space_count = 0; space_count < BJSON_WRITE_TAB_SIZE; space_count++)
                             bjson_dynstr_cat_str(string, " ");
                     }
 
@@ -1269,12 +1279,14 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                     }
 
                     bjson_dynstr_cat_thing(string, node->thing);
-                    
-                    // TODO: Falta checar se precisa adicinar virgula antes do \n
+
+                    if (node->next != NULL)
+                        bjson_dynstr_cat_str(string, ",");
+
                     bjson_dynstr_cat_str(string, "\n");
 
                     bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
-                    
+
                     bjson_dynstr_destroy(string);
                 }
             }
@@ -1288,28 +1300,58 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                     bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
 
                     // Add the tabs
-                    for (int i = 0; i < nested_depth; i++)
+                    for (int tab_count = 0; tab_count < nested_depth; tab_count++)
                     {
-                        for (int j = 0; j < BJSON_WRITE_TAB_SIZE; j++)
+                        for (int space_count = 0; space_count < BJSON_WRITE_TAB_SIZE; space_count++)
                             bjson_dynstr_cat_str(string, " ");
                     }
 
                     // TODO: Falta checar se precisa adicinar virgula antes do \n
                     // Add the closing of the Object or Array
                     if (top_thing->type == BJSON_OBJECT)
-                        bjson_dynstr_cat_str(string, "}\n");
+                        bjson_dynstr_cat_str(string, "}");
                     else
-                        bjson_dynstr_cat_str(string, "]\n");
+                        bjson_dynstr_cat_str(string, "]");
+
+                    if (nested_things->top->link->link != NULL) // If it is not the outer-most thing
+                    {
+                        // Check if it is necessary to add ',' by comparing some funky pointers
+                        {
+                            bjson_thing *second_top_thing = nested_things->top->link->link->link->thing;
+
+                            bjson_thing_list_node *second_top_thing_last_node;
+                            if (second_top_thing->type == BJSON_OBJECT)
+                                second_top_thing_last_node = second_top_thing->value.object->things->start;
+                            else
+                                second_top_thing_last_node = second_top_thing->value.array->things->start;
+
+                            for (; second_top_thing_last_node->next != NULL; second_top_thing_last_node = second_top_thing_last_node->next)
+                                ;
+
+                            if (top_thing != second_top_thing_last_node->thing)
+                                bjson_dynstr_cat_str(string, ",");
+
+                            // It could have been done like this too:
+                            // bjson_thing *second_top_thing = nested_things->top->link->link->link->thing;
+                            // unsigned int list_len;
+                            // if (second_top_thing->type == BJSON_OBJECT)
+                            //     list_len = bjson_thing_list_get_len(second_top_thing->value.object->things);
+                            // else
+                            //     list_len = bjson_thing_list_get_len(second_top_thing->value.array->things);
+                            // if (list_len == bjson_thing_get_as_int(top_thing_iterator))
+                            //     bjson_dynstr_cat_str(string, ",");
+                        }
+
+                        bjson_dynstr_cat_str(string, "\n");
+                    }
 
                     bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
-                    
+
                     bjson_dynstr_destroy(string);
                 }
 
                 bjson_thing_destroy(bjson_thing_stack_pop(nested_things)); // Pop and destroy the iterator
                 bjson_thing_stack_pop(nested_things);                      // Pop the thing
-
-                // continue;
             }
         }
 
@@ -1332,7 +1374,19 @@ void bjson_write_string(bjson_thing *thing, char *buffer, unsigned int size)
 
 void bjson_write_file(bjson_thing *thing, const char *path)
 {
-    // TODO
+    FILE *file = fopen(path, "w");
+
+    char *buffers[BJSON_FILE_MAX_LINES];
+    for (int i = 0; i < BJSON_FILE_MAX_LINES; i++)
+        buffers[i] = calloc(1, BJSON_FILE_MAX_LINE_SIZE);
+
+    bjson_write_strings(thing, buffers, BJSON_FILE_MAX_LINE_SIZE, BJSON_FILE_MAX_LINES);
+
+    for (int i = 0; i < BJSON_FILE_MAX_LINES; i++)
+    {
+        fputs(buffers[i], file);
+        free(buffers[i]);
+    }
 }
 
 #endif
