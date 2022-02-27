@@ -156,8 +156,7 @@ void bjson_write_file(bjson_thing *thing, const char *path);
 
 #define BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER 256
 
-// TODO: Implementar um jeito de dar write com tamanhos variaveis. Se for diferente de quatro tem que adicionar espaços, se for 4 é só colocar um '\t'
-#define BJSON_WRITE_TAB_SIZE 4 // Default - 4
+#define BJSON_WRITE_TAB_SIZE 2
 
 struct bjson_thing
 {
@@ -1075,7 +1074,7 @@ void bjson_dynstr_dump_to_buffers(bjson_dynstr *string, int *current_buffer, int
     int string_iterator = 0;
     while (*current_buffer < n)
     {
-        total_chars = snprintf(buffers[*current_buffer], size - *buffer_iterator, "%s", string->start + string_iterator);
+        total_chars = snprintf(buffers[*current_buffer] + *buffer_iterator, size - *buffer_iterator, "%s", string->start + string_iterator);
         chars_left = total_chars - (size - *buffer_iterator - 1);
         string_iterator += total_chars - chars_left;
 
@@ -1187,7 +1186,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                 bjson_dynstr_cat_str(string, "[\n");
 
             bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
-
+            
             bjson_dynstr_destroy(string);
         }
 
@@ -1208,10 +1207,13 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                     // Print the start of the Object or Array
                     {
                         bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
-
+                        
                         // Add the tabs
                         for (int i = 0; i < nested_depth; i++)
-                            bjson_dynstr_cat_str(string, "\t"); // TODO: Por enquanto o tab é fixo, deixar ele variável
+                        {
+                            for (int j = 0; j < BJSON_WRITE_TAB_SIZE; j++)
+                                bjson_dynstr_cat_str(string, " ");
+                        }
 
                         // Add the name
                         if (top_thing->type == BJSON_OBJECT)
@@ -1222,13 +1224,13 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                         }
 
                         // Add the opening of the Object or Array
-                        if (thing->type == BJSON_OBJECT)
+                        if (node->thing->type == BJSON_OBJECT)
                             bjson_dynstr_cat_str(string, "{\n");
                         else
                             bjson_dynstr_cat_str(string, "[\n");
 
                         bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
-
+                        
                         bjson_dynstr_destroy(string);
                     }
 
@@ -1253,7 +1255,10 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
 
                     // Add the tabs
                     for (int i = 0; i < nested_depth; i++)
-                        bjson_dynstr_cat_str(string, "\t"); // TODO: Por enquanto o tab é fixo, deixar ele variável
+                    {
+                        for (int j = 0; j < BJSON_WRITE_TAB_SIZE; j++)
+                            bjson_dynstr_cat_str(string, " ");
+                    }
 
                     // Add the name
                     if (top_thing->type == BJSON_OBJECT)
@@ -1263,34 +1268,41 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                         bjson_dynstr_cat_str(string, "\": ");
                     }
 
-                    // TODO: Falta checar se precisa adicinar virgula depois de dar cat na thing
                     bjson_dynstr_cat_thing(string, node->thing);
+                    
+                    // TODO: Falta checar se precisa adicinar virgula antes do \n
+                    bjson_dynstr_cat_str(string, "\n");
 
                     bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
-
+                    
                     bjson_dynstr_destroy(string);
                 }
             }
 
             if (node == NULL)
             {
+                nested_depth--;
+
                 // Print the end of the Object or Array
                 {
                     bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
 
                     // Add the tabs
                     for (int i = 0; i < nested_depth; i++)
-                        bjson_dynstr_cat_str(string, "\t"); // TODO: Por enquanto o tab é fixo, deixar ele variável
+                    {
+                        for (int j = 0; j < BJSON_WRITE_TAB_SIZE; j++)
+                            bjson_dynstr_cat_str(string, " ");
+                    }
 
                     // TODO: Falta checar se precisa adicinar virgula antes do \n
                     // Add the closing of the Object or Array
-                    if (thing->type == BJSON_OBJECT)
+                    if (top_thing->type == BJSON_OBJECT)
                         bjson_dynstr_cat_str(string, "}\n");
                     else
                         bjson_dynstr_cat_str(string, "]\n");
 
                     bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
-
+                    
                     bjson_dynstr_destroy(string);
                 }
 
