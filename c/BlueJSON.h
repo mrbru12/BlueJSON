@@ -1030,10 +1030,10 @@ bjson_thing *bjson_read_file(const char *path)
 
 typedef struct
 {
-    char *start; // The begining of the string
+    char *start;       // The begining of the string
     unsigned int size; // The total size of the string, including unused space
-    unsigned int len; // The count of chars in the string until the terminating '\0'
-} bjson_dynstr; // Dynamic String
+    unsigned int len;  // The count of chars in the string until the terminating '\0'
+} bjson_dynstr;        // Dynamic String
 
 bjson_dynstr *bjson_dynstr_create(unsigned int size)
 {
@@ -1062,8 +1062,7 @@ void bjson_dynstr_extend_to_fit(bjson_dynstr *string, unsigned int size)
     do
     {
         string->size *= 2; // Double the size each time
-    }
-    while (!bjson_dynstr_can_fit(string, size));
+    } while (!bjson_dynstr_can_fit(string, size));
 
     string->start = realloc(string->start, string->size);
 }
@@ -1109,29 +1108,29 @@ void bjson_dynstr_cat_thing(bjson_dynstr *string, bjson_thing *thing)
         break;
 
     case BJSON_STRING:
-        {
-            // char *format = malloc(strlen(thing->value.string) + 3); // +3 means ['"' + '"' + '\0'] 
-            // sprintf(format, "\"%s\"", thing->value.string);
-            // bjson_dynstr_cat_str(string, format);
-            // free(format);
+    {
+        // char *format = malloc(strlen(thing->value.string) + 3); // +3 means ['"' + '"' + '\0']
+        // sprintf(format, "\"%s\"", thing->value.string);
+        // bjson_dynstr_cat_str(string, format);
+        // free(format);
 
-            bjson_dynstr_cat_str(string, "\"");
-            bjson_dynstr_cat_str(string, thing->value.string);
-            bjson_dynstr_cat_str(string, "\"");
-        } 
-        break;
-    
+        bjson_dynstr_cat_str(string, "\"");
+        bjson_dynstr_cat_str(string, thing->value.string);
+        bjson_dynstr_cat_str(string, "\"");
+    }
+    break;
+
     case BJSON_NUMBER:
-        {
-            char format[256]; // It's kinda sad and disappointing having to do it this way... but at least any number should fit inside this buffer
-            if (floor(thing->value.number) == thing->value.number)
-                snprintf(format, sizeof(format), "%d", (int)thing->value.number);
-            else
-                snprintf(format, sizeof(format), "%lf", thing->value.number);
-            
-            bjson_dynstr_cat_str(string, format);
-        }
-        break;
+    {
+        char format[256]; // It's kinda sad and disappointing having to do it this way... but at least any number should fit inside this buffer
+        if (floor(thing->value.number) == thing->value.number)
+            snprintf(format, sizeof(format), "%d", (int)thing->value.number);
+        else
+            snprintf(format, sizeof(format), "%lf", thing->value.number);
+
+        bjson_dynstr_cat_str(string, format);
+    }
+    break;
 
     case BJSON_OBJECT:
         break;
@@ -1163,7 +1162,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
     {
         bjson_thing_stack *nested_things = bjson_thing_stack_create();
         int nested_depth = 0;
-        
+
         // TODO: Procurar um jeito de tirar essa parte repetida de código que tem nesses dois blocos aqui em baixo, tanto o de stack quanto o de print
 
         // Push the root thing and it's iterator
@@ -1180,13 +1179,13 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
         // Print the start of the root Object or Array
         {
             bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
-            
+
             // Add the opening of the Object or Array
             if (thing->type == BJSON_OBJECT)
                 bjson_dynstr_cat_str(string, "{\n");
             else
                 bjson_dynstr_cat_str(string, "[\n");
-            
+
             bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
 
             bjson_dynstr_destroy(string);
@@ -1201,7 +1200,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
             bjson_thing_list_node *node = (top_thing->type == BJSON_OBJECT) ? top_thing->value.object->things->start : top_thing->value.array->things->start;
             for (int i = 0; node != NULL && i < bjson_thing_get_as_int(top_thing_iterator); i++)
                 node = node->next;
-            
+
             for (int i = 1; node != NULL; node = node->next, i++)
             {
                 if (node->thing->type == BJSON_OBJECT || node->thing->type == BJSON_ARRAY)
@@ -1209,7 +1208,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                     // Print the start of the Object or Array
                     {
                         bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
-                        
+
                         // Add the tabs
                         for (int i = 0; i < nested_depth; i++)
                             bjson_dynstr_cat_str(string, "\t"); // TODO: Por enquanto o tab é fixo, deixar ele variável
@@ -1251,7 +1250,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                 else // Print the Thing
                 {
                     bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
-                    
+
                     // Add the tabs
                     for (int i = 0; i < nested_depth; i++)
                         bjson_dynstr_cat_str(string, "\t"); // TODO: Por enquanto o tab é fixo, deixar ele variável
@@ -1266,7 +1265,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
 
                     // TODO: Falta checar se precisa adicinar virgula depois de dar cat na thing
                     bjson_dynstr_cat_thing(string, node->thing);
-                    
+
                     bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
 
                     bjson_dynstr_destroy(string);
@@ -1282,7 +1281,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                     // Add the tabs
                     for (int i = 0; i < nested_depth; i++)
                         bjson_dynstr_cat_str(string, "\t"); // TODO: Por enquanto o tab é fixo, deixar ele variável
-                    
+
                     // TODO: Falta checar se precisa adicinar virgula antes do \n
                     // Add the closing of the Object or Array
                     if (thing->type == BJSON_OBJECT)
@@ -1296,7 +1295,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                 }
 
                 bjson_thing_destroy(bjson_thing_stack_pop(nested_things)); // Pop and destroy the iterator
-                bjson_thing_stack_pop(nested_things); // Pop the thing
+                bjson_thing_stack_pop(nested_things);                      // Pop the thing
 
                 // continue;
             }
