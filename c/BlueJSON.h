@@ -24,6 +24,7 @@ https://lihautan.com/json-parser-with-javascript/
 // * Seria interessante se os setters retornassem o objeto pra poder fazer várias operações encadeadas em uma única linha
 // * Seria legal mudar o design do projeto inteiro e fazer tudo estilo funções C, teria tipo fprintjson(FILE *file, ...)
 // * Talvez mudar de bjson_read_...() pra bjson_load_...() porque se pa que faz mais sentido
+// * Talvez desencanar de tudo e deixar o BlueJSON como sendo simplesmente um parser de JSON, sem função pra dar write e sem checagem de erro
 
 #ifndef BJSON_BLUEJSON_H
 #define BJSON_BLUEJSON_H
@@ -60,18 +61,20 @@ typedef union
 bjson_thing *bjson_thing_create();
 void bjson_thing_destroy(bjson_thing *thing);
 
-char *bjson_thing_get_name(bjson_thing *thing, char *buffer, unsigned int size);
-bjson_value_type bjson_thing_get_value_type(bjson_thing *thing);
+char *bjson_thing_get_name(const bjson_thing *thing, char *buffer, unsigned int size);
+bjson_value_type bjson_thing_get_value_type(const bjson_thing *thing);
+// TODO: bjson_value bjson_thing_get_value(const bjson_thing *thing);
 
-char *bjson_thing_get_as_string(bjson_thing *thing, char *buffer, unsigned int size);
-int bjson_thing_get_as_int(bjson_thing *thing);
-float bjson_thing_get_as_float(bjson_thing *thing);
-double bjson_thing_get_as_double(bjson_thing *thing);
-bjson_object *bjson_thing_get_as_object(bjson_thing *thing);
-bjson_array *bjson_thing_get_as_array(bjson_thing *thing);
-int bjson_thing_is_true(bjson_thing *thing);
-int bjson_thing_is_false(bjson_thing *thing);
-int bjson_thing_is_null(bjson_thing *thing);
+// TODO: Fazer todos os getters tipo esses: com const
+char *bjson_thing_get_as_string(const bjson_thing *thing, char *buffer, unsigned int size);
+int bjson_thing_get_as_int(const bjson_thing *thing);
+float bjson_thing_get_as_float(const bjson_thing *thing);
+double bjson_thing_get_as_double(const bjson_thing *thing);
+bjson_object *bjson_thing_get_as_object(const bjson_thing *thing);
+bjson_array *bjson_thing_get_as_array(const bjson_thing *thing);
+int bjson_thing_is_true(const bjson_thing *thing);
+int bjson_thing_is_false(const bjson_thing *thing);
+int bjson_thing_is_null(const bjson_thing *thing);
 
 void bjson_thing_set_name(bjson_thing *thing, const char *name);
 
@@ -88,16 +91,16 @@ void bjson_thing_set_as_null(bjson_thing *thing);
 bjson_object *bjson_object_create();
 void bjson_object_destroy(bjson_object *object);
 
-bjson_thing *bjson_object_get_thing(bjson_object *object, const char *name);
-char *bjson_object_get_string(bjson_object *object, const char *name, char *buffer, unsigned int size);
-int bjson_object_get_int(bjson_object *object, const char *name);
-float bjson_object_get_float(bjson_object *object, const char *name);
-double bjson_object_get_double(bjson_object *object, const char *name);
-bjson_object *bjson_object_get_object(bjson_object *object, const char *name);
-bjson_array *bjson_object_get_array(bjson_object *object, const char *name);
-int bjson_object_is_true(bjson_object *object, const char *name);
-int bjson_object_is_false(bjson_object *object, const char *name);
-int bjson_object_is_null(bjson_object *object, const char *name);
+bjson_thing *bjson_object_get_thing(const bjson_object *object, const char *name);
+char *bjson_object_get_string(const bjson_object *object, const char *name, char *buffer, unsigned int size);
+int bjson_object_get_int(const bjson_object *object, const char *name);
+float bjson_object_get_float(const bjson_object *object, const char *name);
+double bjson_object_get_double(const bjson_object *object, const char *name);
+bjson_object *bjson_object_get_object(const bjson_object *object, const char *name);
+bjson_array *bjson_object_get_array(const bjson_object *object, const char *name);
+int bjson_object_is_true(const bjson_object *object, const char *name);
+int bjson_object_is_false(const bjson_object *object, const char *name);
+int bjson_object_is_null(const bjson_object *object, const char *name);
 
 // Appends the specified thing to the end of the object things
 void bjson_object_push_thing(bjson_object *object, bjson_thing *thing);
@@ -105,16 +108,16 @@ void bjson_object_push_thing(bjson_object *object, bjson_thing *thing);
 bjson_array *bjson_array_create();
 void bjson_array_destroy(bjson_array *array);
 
-bjson_thing *bjson_array_get_thing(bjson_array *array, unsigned int index);
-char *bjson_array_get_string(bjson_array *array, unsigned int index, char *buffer, unsigned int size);
-int bjson_array_get_int(bjson_array *array, unsigned int index);
-float bjson_array_get_float(bjson_array *array, unsigned int index);
-double bjson_array_get_double(bjson_array *array, unsigned int index);
-bjson_object *bjson_array_get_object(bjson_array *array, unsigned int index);
-bjson_array *bjson_array_get_array(bjson_array *array, unsigned int index);
-int bjson_array_is_true(bjson_array *array, unsigned int index);
-int bjson_array_is_false(bjson_array *array, unsigned int index);
-int bjson_array_is_null(bjson_array *array, unsigned int index);
+bjson_thing *bjson_array_get_thing(const bjson_array *array, unsigned int index);
+char *bjson_array_get_string(const bjson_array *array, unsigned int index, char *buffer, unsigned int size);
+int bjson_array_get_int(const bjson_array *array, unsigned int index);
+float bjson_array_get_float(const bjson_array *array, unsigned int index);
+double bjson_array_get_double(const bjson_array *array, unsigned int index);
+bjson_object *bjson_array_get_object(const bjson_array *array, unsigned int index);
+bjson_array *bjson_array_get_array(const bjson_array *array, unsigned int index);
+int bjson_array_is_true(const bjson_array *array, unsigned int index);
+int bjson_array_is_false(const bjson_array *array, unsigned int index);
+int bjson_array_is_null(const bjson_array *array, unsigned int index);
 
 // Appends the specified thing to the end of the array things
 void bjson_array_push_thing(bjson_array *array, bjson_thing *thing);
@@ -131,11 +134,12 @@ bjson_thing *bjson_read_string(const char *str);
 // Returns the outer-most root bjson_thing, or NULL on error
 bjson_thing *bjson_read_file(const char *path);
 
-// void bjson_write_strings(bjson_thing *thing, const char *buffers[], unsigned int size, unsigned int n);
+// Writes the JSON structure among the n strings. All buffers are expected to be the same size
+void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size, unsigned int n);
 
-// void bjson_write_string(bjson_thing *thing, const char *buffer, unsigned int size);
+void bjson_write_string(bjson_thing *thing, char *buffer, unsigned int size);
 
-// void bjson_write_file(bjson_thing *thing, const char *path);
+void bjson_write_file(bjson_thing *thing, const char *path);
 
 #endif
 
@@ -149,6 +153,11 @@ bjson_thing *bjson_read_file(const char *path);
 
 #define BJSON_FILE_MAX_LINE_SIZE 256
 #define BJSON_FILE_MAX_LINES 1024
+
+#define BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER 256
+
+// TODO: Implementar um jeito de dar write com tamanhos variaveis. Se for diferente de quatro tem que adicionar espaços, se for 4 é só colocar um '\t'
+#define BJSON_WRITE_TAB_SIZE 4 // Default - 4
 
 struct bjson_thing
 {
@@ -193,7 +202,7 @@ void bjson_thing_destroy_value(bjson_thing *thing)
     thing->type = BJSON_NOTHING;
 }
 
-char *bjson_thing_get_name(bjson_thing *thing, char *buffer, unsigned int size)
+char *bjson_thing_get_name(const bjson_thing *thing, char *buffer, unsigned int size)
 {
     strncpy(buffer, thing->name, size);
     buffer[size - 1] = '\0';
@@ -201,12 +210,12 @@ char *bjson_thing_get_name(bjson_thing *thing, char *buffer, unsigned int size)
     return buffer;
 }
 
-bjson_value_type bjson_thing_get_value_type(bjson_thing *thing)
+bjson_value_type bjson_thing_get_value_type(const bjson_thing *thing)
 {
     return thing->type;
 }
 
-char *bjson_thing_get_as_string(bjson_thing *thing, char *buffer, unsigned int size)
+char *bjson_thing_get_as_string(const bjson_thing *thing, char *buffer, unsigned int size)
 {
     strncpy(buffer, thing->value.string, size);
     buffer[size - 1] = '\0';
@@ -214,42 +223,42 @@ char *bjson_thing_get_as_string(bjson_thing *thing, char *buffer, unsigned int s
     return buffer;
 }
 
-int bjson_thing_get_as_int(bjson_thing *thing)
+int bjson_thing_get_as_int(const bjson_thing *thing)
 {
     return (int)(thing->value.number);
 }
 
-float bjson_thing_get_as_float(bjson_thing *thing)
+float bjson_thing_get_as_float(const bjson_thing *thing)
 {
     return (float)(thing->value.number);
 }
 
-double bjson_thing_get_as_double(bjson_thing *thing)
+double bjson_thing_get_as_double(const bjson_thing *thing)
 {
     return thing->value.number;
 }
 
-bjson_object *bjson_thing_get_as_object(bjson_thing *thing)
+bjson_object *bjson_thing_get_as_object(const bjson_thing *thing)
 {
     return (thing == NULL || thing->type != BJSON_OBJECT) ? NULL : thing->value.object;
 }
 
-bjson_array *bjson_thing_get_as_array(bjson_thing *thing)
+bjson_array *bjson_thing_get_as_array(const bjson_thing *thing)
 {
     return (thing == NULL || thing->type != BJSON_ARRAY) ? NULL : thing->value.array;
 }
 
-int bjson_thing_is_true(bjson_thing *thing)
+int bjson_thing_is_true(const bjson_thing *thing)
 {
     return thing->type == BJSON_TRUE;
 }
 
-int bjson_thing_is_false(bjson_thing *thing)
+int bjson_thing_is_false(const bjson_thing *thing)
 {
     return thing->type == BJSON_FALSE;
 }
 
-int bjson_thing_is_null(bjson_thing *thing)
+int bjson_thing_is_null(const bjson_thing *thing)
 {
     return thing->type == BJSON_NULL;
 }
@@ -508,52 +517,52 @@ void bjson_object_destroy(bjson_object *object)
     free(object);
 }
 
-bjson_thing *bjson_object_get_thing(bjson_object *object, const char *name)
+bjson_thing *bjson_object_get_thing(const bjson_object *object, const char *name)
 {
     return bjson_thing_list_get_by_name(object->things, name);
 }
 
-char *bjson_object_get_string(bjson_object *object, const char *name, char *buffer, unsigned int size)
+char *bjson_object_get_string(const bjson_object *object, const char *name, char *buffer, unsigned int size)
 {
     return bjson_thing_get_as_string(bjson_object_get_thing(object, name), buffer, size);
 }
 
-int bjson_object_get_int(bjson_object *object, const char *name)
+int bjson_object_get_int(const bjson_object *object, const char *name)
 {
     return (int)bjson_object_get_double(object, name);
 }
 
-float bjson_object_get_float(bjson_object *object, const char *name)
+float bjson_object_get_float(const bjson_object *object, const char *name)
 {
     return (float)bjson_object_get_double(object, name);
 }
 
-double bjson_object_get_double(bjson_object *object, const char *name)
+double bjson_object_get_double(const bjson_object *object, const char *name)
 {
     return bjson_thing_get_as_double(bjson_object_get_thing(object, name));
 }
 
-bjson_object *bjson_object_get_object(bjson_object *object, const char *name)
+bjson_object *bjson_object_get_object(const bjson_object *object, const char *name)
 {
     return bjson_thing_get_as_object(bjson_object_get_thing(object, name));
 }
 
-bjson_array *bjson_object_get_array(bjson_object *object, const char *name)
+bjson_array *bjson_object_get_array(const bjson_object *object, const char *name)
 {
     return bjson_thing_get_as_array(bjson_object_get_thing(object, name));
 }
 
-int bjson_object_is_true(bjson_object *object, const char *name)
+int bjson_object_is_true(const bjson_object *object, const char *name)
 {
     return bjson_thing_is_true(bjson_object_get_thing(object, name));
 }
 
-int bjson_object_is_false(bjson_object *object, const char *name)
+int bjson_object_is_false(const bjson_object *object, const char *name)
 {
     return bjson_thing_is_false(bjson_object_get_thing(object, name));
 }
 
-int bjson_object_is_null(bjson_object *object, const char *name)
+int bjson_object_is_null(const bjson_object *object, const char *name)
 {
     return bjson_thing_is_null(bjson_object_get_thing(object, name));
 }
@@ -585,52 +594,52 @@ void bjson_array_destroy(bjson_array *array)
     free(array);
 }
 
-bjson_thing *bjson_array_get_thing(bjson_array *array, unsigned int index)
+bjson_thing *bjson_array_get_thing(const bjson_array *array, unsigned int index)
 {
     return bjson_thing_list_get_at(array->things, index);
 }
 
-char *bjson_array_get_string(bjson_array *array, unsigned int index, char *buffer, unsigned int size)
+char *bjson_array_get_string(const bjson_array *array, unsigned int index, char *buffer, unsigned int size)
 {
     return bjson_thing_get_as_string(bjson_array_get_thing(array, index), buffer, size);
 }
 
-int bjson_array_get_int(bjson_array *array, unsigned int index)
+int bjson_array_get_int(const bjson_array *array, unsigned int index)
 {
     return (int)bjson_array_get_double(array, index);
 }
 
-float bjson_array_get_float(bjson_array *array, unsigned int index)
+float bjson_array_get_float(const bjson_array *array, unsigned int index)
 {
     return (float)bjson_array_get_double(array, index);
 }
 
-double bjson_array_get_double(bjson_array *array, unsigned int index)
+double bjson_array_get_double(const bjson_array *array, unsigned int index)
 {
     return bjson_thing_get_as_double(bjson_array_get_thing(array, index));
 }
 
-bjson_object *bjson_array_get_object(bjson_array *array, unsigned int index)
+bjson_object *bjson_array_get_object(const bjson_array *array, unsigned int index)
 {
     return bjson_thing_get_as_object(bjson_array_get_thing(array, index));
 }
 
-bjson_array *bjson_array_get_array(bjson_array *array, unsigned int index)
+bjson_array *bjson_array_get_array(const bjson_array *array, unsigned int index)
 {
     return bjson_thing_get_as_array(bjson_array_get_thing(array, index));
 }
 
-int bjson_array_is_true(bjson_array *array, unsigned int index)
+int bjson_array_is_true(const bjson_array *array, unsigned int index)
 {
     return bjson_thing_is_true(bjson_array_get_thing(array, index));
 }
 
-int bjson_array_is_false(bjson_array *array, unsigned int index)
+int bjson_array_is_false(const bjson_array *array, unsigned int index)
 {
     return bjson_thing_is_false(bjson_array_get_thing(array, index));
 }
 
-int bjson_array_is_null(bjson_array *array, unsigned int index)
+int bjson_array_is_null(const bjson_array *array, unsigned int index)
 {
     return bjson_thing_is_null(bjson_array_get_thing(array, index));
 }
@@ -718,7 +727,7 @@ int bjson_parse_string(const char *string, char *buffer, unsigned int size) // T
                     buffer[buffer_i] = '\t';
                     break;
 
-                case 'u':
+                case 'u': // TODO: Isso representa um caracter unicode, então vai estar no formato \u seguido de 4 digitos que são o identificador do caractere
                     // TODO: buffer[i - 1] = '\u1234';
                     break;
 
@@ -834,7 +843,7 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
     bjson_thing *thing = NULL;
     char *current_thing_name = NULL;
 
-    for (int current_str = 0; current_str < n; current_str++)
+    for (unsigned int current_str = 0; current_str < n; current_str++)
     {
         const char *line = strs[current_str];
 
@@ -1017,6 +1026,302 @@ bjson_thing *bjson_read_file(const char *path)
     fclose(file);
 
     return root_thing;
+}
+
+typedef struct
+{
+    char *start; // The begining of the string
+    unsigned int size; // The total size of the string, including unused space
+    unsigned int len; // The count of chars in the string until the terminating '\0'
+} bjson_dynstr; // Dynamic String
+
+bjson_dynstr *bjson_dynstr_create(unsigned int size)
+{
+    bjson_dynstr *string = malloc(sizeof(bjson_dynstr));
+    string->start = malloc((size > 0) ? size : 1);
+    string->start[0] = '\0';
+    string->size = size;
+    string->len = 0;
+
+    return string;
+}
+
+void bjson_dynstr_destroy(bjson_dynstr *string)
+{
+    free(string->start);
+    free(string);
+}
+
+int bjson_dynstr_can_fit(bjson_dynstr *string, unsigned int size)
+{
+    return size <= string->size - string->len - 1;
+}
+
+void bjson_dynstr_extend_to_fit(bjson_dynstr *string, unsigned int size)
+{
+    do
+    {
+        string->size *= 2; // Double the size each time
+    }
+    while (!bjson_dynstr_can_fit(string, size));
+
+    string->start = realloc(string->start, string->size);
+}
+
+// TODO: Talvez mudar o nome size pra buffer_size e o nome n pra buffer_count
+// This function's logic is kinda crazy ^_^
+void bjson_dynstr_dump_to_buffers(bjson_dynstr *string, int *current_buffer, int *buffer_iterator, char *buffers[], unsigned int size, unsigned int n)
+{
+    int total_chars = 0, chars_left = 0;
+    int string_iterator = 0;
+    while (*current_buffer < n)
+    {
+        total_chars = snprintf(buffers[*current_buffer], size - *buffer_iterator, "%s", string->start + string_iterator);
+        chars_left = total_chars - (size - *buffer_iterator - 1);
+        string_iterator += total_chars - chars_left;
+
+        if (chars_left <= 0) // The data successfully fit in the buffer
+        {
+            *buffer_iterator = (total_chars + *buffer_iterator) % (size - 1); // Increment the buffer iterator with the amount dumped
+            break;
+        }
+        else // The data didn't fit, so jump to the begining of the next buffer
+        {
+            (*current_buffer)++;
+            *buffer_iterator = 0;
+        }
+    }
+}
+
+void bjson_dynstr_cat_str(bjson_dynstr *string, const char *str)
+{
+    if (!bjson_dynstr_can_fit(string, strlen(str)))
+        bjson_dynstr_extend_to_fit(string, strlen(str));
+
+    string->len = strlen(strcat(string->start + string->len, str)); // TODO: Esse string->start + string->len na strcat() é pra otimizar, fazer um benchmark depois pra ver como fica com e sem isso
+}
+
+void bjson_dynstr_cat_thing(bjson_dynstr *string, bjson_thing *thing)
+{
+    switch (thing->type)
+    {
+    case BJSON_NOTHING:
+        break;
+
+    case BJSON_STRING:
+        {
+            // char *format = malloc(strlen(thing->value.string) + 3); // +3 means ['"' + '"' + '\0'] 
+            // sprintf(format, "\"%s\"", thing->value.string);
+            // bjson_dynstr_cat_str(string, format);
+            // free(format);
+
+            bjson_dynstr_cat_str(string, "\"");
+            bjson_dynstr_cat_str(string, thing->value.string);
+            bjson_dynstr_cat_str(string, "\"");
+        } 
+        break;
+    
+    case BJSON_NUMBER:
+        {
+            char format[256]; // It's kinda sad and disappointing having to do it this way... but at least any number should fit inside this buffer
+            if (floor(thing->value.number) == thing->value.number)
+                snprintf(format, sizeof(format), "%d", (int)thing->value.number);
+            else
+                snprintf(format, sizeof(format), "%lf", thing->value.number);
+            
+            bjson_dynstr_cat_str(string, format);
+        }
+        break;
+
+    case BJSON_OBJECT:
+        break;
+
+    case BJSON_ARRAY:
+        break;
+
+    case BJSON_TRUE:
+        bjson_dynstr_cat_str(string, "true");
+        break;
+
+    case BJSON_FALSE:
+        bjson_dynstr_cat_str(string, "false");
+        break;
+
+    case BJSON_NULL:
+        bjson_dynstr_cat_str(string, "null");
+        break;
+    }
+}
+
+// TODO: Se pa que da pra dar uma refatorada nessa func reduzindo um pouco a quatidade de código repetido
+void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size, unsigned int n)
+{
+    int current_buffer = 0;
+    int buffer_iterator = 0; // Iterator to walk in the current buffer
+
+    if (thing->type == BJSON_OBJECT || thing->type == BJSON_ARRAY)
+    {
+        bjson_thing_stack *nested_things = bjson_thing_stack_create();
+        int nested_depth = 0;
+        
+        // TODO: Procurar um jeito de tirar essa parte repetida de código que tem nesses dois blocos aqui em baixo, tanto o de stack quanto o de print
+
+        // Push the root thing and it's iterator
+        {
+            bjson_thing *thing_iterator = bjson_thing_create(); // TODO: Iterator que vai guardar quantas things já foram writadas em cada Object ou Array: GAMBIARRA ^^
+            bjson_thing_set_as_int(thing_iterator, 0);
+
+            bjson_thing_stack_push(nested_things, thing);
+            bjson_thing_stack_push(nested_things, thing_iterator);
+
+            nested_depth++;
+        }
+
+        // Print the start of the root Object or Array
+        {
+            bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
+            
+            // Add the opening of the Object or Array
+            if (thing->type == BJSON_OBJECT)
+                bjson_dynstr_cat_str(string, "{\n");
+            else
+                bjson_dynstr_cat_str(string, "[\n");
+            
+            bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
+
+            bjson_dynstr_destroy(string);
+        }
+
+        while (!bjson_thing_stack_is_empty(nested_things))
+        {
+            bjson_thing *top_thing = nested_things->top->link->thing;
+            bjson_thing *top_thing_iterator = bjson_thing_stack_peek(nested_things);
+
+            // Step to the next thing in the list using the iterator
+            bjson_thing_list_node *node = (top_thing->type == BJSON_OBJECT) ? top_thing->value.object->things->start : top_thing->value.array->things->start;
+            for (int i = 0; node != NULL && i < bjson_thing_get_as_int(top_thing_iterator); i++)
+                node = node->next;
+            
+            for (int i = 1; node != NULL; node = node->next, i++)
+            {
+                if (node->thing->type == BJSON_OBJECT || node->thing->type == BJSON_ARRAY)
+                {
+                    // Print the start of the Object or Array
+                    {
+                        bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
+                        
+                        // Add the tabs
+                        for (int i = 0; i < nested_depth; i++)
+                            bjson_dynstr_cat_str(string, "\t"); // TODO: Por enquanto o tab é fixo, deixar ele variável
+
+                        // Add the name
+                        if (top_thing->type == BJSON_OBJECT)
+                        {
+                            bjson_dynstr_cat_str(string, "\"");
+                            bjson_dynstr_cat_str(string, node->thing->name);
+                            bjson_dynstr_cat_str(string, "\": ");
+                        }
+
+                        // Add the opening of the Object or Array
+                        if (thing->type == BJSON_OBJECT)
+                            bjson_dynstr_cat_str(string, "{\n");
+                        else
+                            bjson_dynstr_cat_str(string, "[\n");
+
+                        bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
+
+                        bjson_dynstr_destroy(string);
+                    }
+
+                    top_thing_iterator->value.number += (double)i; // Increment the current iterator with the amount walked
+
+                    // Push the thing and it's iterator
+                    {
+                        bjson_thing *thing_iterator = bjson_thing_create();
+                        bjson_thing_set_as_int(thing_iterator, 0);
+
+                        bjson_thing_stack_push(nested_things, node->thing);
+                        bjson_thing_stack_push(nested_things, thing_iterator);
+
+                        nested_depth++;
+                    }
+
+                    break; // Break the loop to go inside the found nested thing
+                }
+                else // Print the Thing
+                {
+                    bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
+                    
+                    // Add the tabs
+                    for (int i = 0; i < nested_depth; i++)
+                        bjson_dynstr_cat_str(string, "\t"); // TODO: Por enquanto o tab é fixo, deixar ele variável
+
+                    // Add the name
+                    if (top_thing->type == BJSON_OBJECT)
+                    {
+                        bjson_dynstr_cat_str(string, "\"");
+                        bjson_dynstr_cat_str(string, node->thing->name);
+                        bjson_dynstr_cat_str(string, "\": ");
+                    }
+
+                    // TODO: Falta checar se precisa adicinar virgula depois de dar cat na thing
+                    bjson_dynstr_cat_thing(string, node->thing);
+                    
+                    bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
+
+                    bjson_dynstr_destroy(string);
+                }
+            }
+
+            if (node == NULL)
+            {
+                // Print the end of the Object or Array
+                {
+                    bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
+
+                    // Add the tabs
+                    for (int i = 0; i < nested_depth; i++)
+                        bjson_dynstr_cat_str(string, "\t"); // TODO: Por enquanto o tab é fixo, deixar ele variável
+                    
+                    // TODO: Falta checar se precisa adicinar virgula antes do \n
+                    // Add the closing of the Object or Array
+                    if (thing->type == BJSON_OBJECT)
+                        bjson_dynstr_cat_str(string, "}\n");
+                    else
+                        bjson_dynstr_cat_str(string, "]\n");
+
+                    bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
+
+                    bjson_dynstr_destroy(string);
+                }
+
+                bjson_thing_destroy(bjson_thing_stack_pop(nested_things)); // Pop and destroy the iterator
+                bjson_thing_stack_pop(nested_things); // Pop the thing
+
+                // continue;
+            }
+        }
+
+        bjson_thing_stack_destroy(nested_things);
+    }
+    else // Print the Thing
+    {
+        // TODO: Talvez deixar as outras partes que printam juntinhas que nem ta aqui
+        bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
+        bjson_dynstr_cat_thing(string, thing);
+        bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
+        bjson_dynstr_destroy(string);
+    }
+}
+
+void bjson_write_string(bjson_thing *thing, char *buffer, unsigned int size)
+{
+    bjson_write_strings(thing, &buffer, size, 1);
+}
+
+void bjson_write_file(bjson_thing *thing, const char *path)
+{
+    // TODO
 }
 
 #endif
