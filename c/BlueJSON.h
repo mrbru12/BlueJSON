@@ -21,10 +21,9 @@ https://lihautan.com/json-parser-with-javascript/
 // * Adicionar uma licença no começo desse arquivo
 // * Talvez no Array e no Object mudar os nomes dos getters e setters pra ..._find_get_...() e ..._find_set_...()
 // * Talvez olhar nos commits antigos no Github e pegar de volta alguns TODOs que eu tirei pq pensei que n ia mais precisar
-// * Seria interessante se os setters retornassem o objeto pra poder fazer várias operações encadeadas em uma única linha
 // * Seria legal mudar o design do projeto inteiro e fazer tudo estilo funções C, teria tipo fprintjson(FILE *file, ...)
-// * Talvez mudar de bjson_read_...() pra bjson_load_...() porque se pa que faz mais sentido
-// * Talvez desencanar de tudo e deixar o BlueJSON como sendo simplesmente um parser de JSON, sem função pra dar write e sem checagem de erro
+// * Talvez desencanar e deixar o BlueJSON sem checagem de erro
+// * Talvez fazer um sistema dinamico de ler arquivo lendo char por char
 
 #ifndef BJSON_BLUEJSON_H
 #define BJSON_BLUEJSON_H
@@ -154,6 +153,7 @@ void bjson_write_file(bjson_thing *thing, const char *path);
 #define BJSON_FILE_MAX_LINE_SIZE 256
 #define BJSON_FILE_MAX_LINES 1024
 
+// TODO: Talvez mudar esse nome pra algo que possibilite um uso mais generalizado, tipo BJSON_DYNSTR_DEFAULT_INITIAL_SIZE
 #define BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER 256
 
 #define BJSON_WRITE_TAB_SIZE 2
@@ -695,12 +695,16 @@ void bjson_panic(const char *msg)
     exit(1);
 }
 
-size_t bjson_string_len(const char *string) // TODO: Talvez trocar string por str
+unsigned int bjson_strlen_in_quotes(const char *str)
 {
-    return strchr(string + 1, '"') - (string + 1);
+    int len = 0;
+    for (str++; !(str[len] == '\"' && *(str + (len - 1)) != '\\'); len++); // What a funky loop! O_O
+    // Applying some mathematical logic, the loop condition could have been written as: str[len] != '\"' || *(str + (len - 1) == '\\'
+    
+    return len;
 }
 
-int bjson_parse_string(const char *string, char *buffer, unsigned int size) // TODO: Talvez trocar string por string_str
+int bjson_parse_string(const char *string, char *buffer, unsigned int size)
 {
     // TODO: Precisa de mais checks desse tipo (checar se não está no fim da linha, etc...) em outros lugares do parser
     int string_i = 1, buffer_i = 0;
@@ -753,7 +757,7 @@ int bjson_parse_string(const char *string, char *buffer, unsigned int size) // T
     return string_i + 1;
 }
 
-int bjson_parse_number(const char *number, double *buffer) // TODO: Talvez trocar number por number_str
+int bjson_parse_number(const char *number, double *buffer)
 {
     // TODO: Precisa de uma boa refatorada nessa parte de números pra deixar mais claro o que ta acontecendo, apesar de estar bonitin *-*
     // TODO: Precisa fazer mensagens de erro correspondentes pra cada tipo de erro e talvez mostrar mais infos nelas como a linha que deu erro
@@ -840,7 +844,7 @@ int bjson_parse_number(const char *number, double *buffer) // TODO: Talvez troca
 bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
 {
     // TODO: Talvez retirar essa variável pq daria pra retornar a root thing direto pelo stack de nested things
-    bjson_thing *root_thing = NULL; // TODO: Talvez mudar o nome pra root_thing
+    bjson_thing *root_thing = NULL;
 
     bjson_thing_stack *nested_things = bjson_thing_stack_create();
 
@@ -858,23 +862,14 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
         int i = 0;
         while (i < strlen(line))
         {
-            // TODO: Nas strings, checar quando tiver caracateres de escape e especiais, tipo '\"' e '\n', etc...
             if (line[i] == '"')
             {
-                size_t string_len = bjson_string_len(line + i);
+                unsigned int string_len = bjson_strlen_in_quotes(line + i);
 
                 if (current_thing_name == NULL &&
                     !bjson_thing_stack_is_empty(nested_things) &&
                     bjson_thing_stack_peek(nested_things)->type != BJSON_ARRAY) // Name
                 {
-                    /*
-                    current_thing_name = malloc(string_len + 1);
-                    strncpy(current_thing_name, line + i + 1, string_len);
-                    current_thing_name[string_len] = '\0';
-
-                    i += string_len + 2;
-                    */
-
                     current_thing_name = malloc(string_len + 1);
                     i += bjson_parse_string(line + i, current_thing_name, string_len + 1);
 
@@ -882,21 +877,6 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
                 }
                 else // String
                 {
-                    // TODO: Talvez mudar isso pra bjson_thing_set_string(thing, current_thing_name). Também mudar as outras partes pros setters correspondentes,
-                    //       como quando o parser encontrar um objeto mudar para bjson_thing_set_object(thing, bjson_object_create()). Agora faria bem mais sentido
-                    //       só deixar usar um setter em uma thing caso o value_type dela seja BJSON_NOTHING (ou algo do tipo) e ela esteja totalmente "limpa"
-
-                    /*
-                    thing = bjson_thing_create();
-                    thing->type = BJSON_STRING;
-
-                    thing->value.string = malloc(string_len + 1);
-                    strncpy(thing->value.string, line + i + 1, string_len);
-                    thing->value.string[string_len] = '\0';
-
-                    i += string_len + 2;
-                    */
-
                     thing = bjson_thing_create();
                     thing->type = BJSON_STRING;
                     thing->value.string = malloc(string_len + 1);
@@ -962,8 +942,8 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
             }
             else // Ignorable characters
             {
-                if (!bjson_expect_is_char(line[i], ":, \n\0", 5))
-                    bjson_panic("Unexpected char somewhere!");
+                // if (!bjson_expect_is_char(line[i], ":, \n\0", 5))
+                //     bjson_panic("Unexpected char somewhere!");
 
                 i++;
                 continue;
@@ -1089,7 +1069,8 @@ void bjson_dynstr_dump_to_buffers(bjson_dynstr *string, int *current_buffer, int
 
         if (chars_left <= 0) // The data successfully fit in the buffer
         {
-            *buffer_iterator = (total_chars + *buffer_iterator) % (size - 1); // Increment the buffer iterator with the amount dumped
+            // *buffer_iterator = (total_chars + *buffer_iterator) % size;
+            *buffer_iterator += total_chars; // Increment the buffer iterator with the amount dumped
             break;
         }
         else // The data didn't fit, so jump to the begining of the next buffer
@@ -1100,14 +1081,78 @@ void bjson_dynstr_dump_to_buffers(bjson_dynstr *string, int *current_buffer, int
     }
 }
 
+void bjson_dynstr_erase(bjson_dynstr *string, unsigned int pos, unsigned int count)
+{
+    strcpy(string->start + pos, string->start + pos + count);
+    string->len -= count;  
+}
+
 void bjson_dynstr_cat_str(bjson_dynstr *string, const char *str)
 {
     if (!bjson_dynstr_can_fit(string, strlen(str)))
         bjson_dynstr_extend_to_fit(string, strlen(str));
 
-    string->len = strlen(strcat(string->start + string->len, str)); // TODO: Esse string->start + string->len na strcat() é pra otimizar, fazer um benchmark depois pra ver como fica com e sem isso
+    strcpy(string->start + string->len, str); // TODO: Esse string->start + string->len na strcat() é pra otimizar, fazer um benchmark depois pra ver como fica com e sem isso
+    string->len = strlen(string->start); 
 }
 
+// TODO: Ta meio pesadinha essa func em termos de eficiencia, mas se pa que não tem problema porque ela não vai ser chamada muitas vezes
+void bjson_dynstr_insert_str(bjson_dynstr *string, unsigned int pos, const char *str)
+{
+    char *right_str = malloc(string->len - pos + 1);
+    strcpy(right_str, string->start + pos);
+
+    bjson_dynstr_erase(string, pos, string->len - pos);
+
+    bjson_dynstr_cat_str(string, str);
+    bjson_dynstr_cat_str(string, right_str);
+}
+
+void bjson_dynstr_cat_dynstr(bjson_dynstr *string, bjson_dynstr *str)
+{
+    bjson_dynstr_cat_str(string, str->start);
+}
+
+void bjson_dynstr_convert_escape_chars(bjson_dynstr *string)
+{
+    for (int i = 0; i < string->len; i++)
+    {
+        switch (string->start[i])
+        {
+        case '\b':
+            bjson_dynstr_erase(string, i, 1);
+            bjson_dynstr_insert_str(string, i, "\\b");
+            break;
+
+        case '\f':
+            bjson_dynstr_erase(string, i, 1);
+            bjson_dynstr_insert_str(string, i, "\\f");
+            break;
+
+        case '\n':
+            bjson_dynstr_erase(string, i, 1);
+            bjson_dynstr_insert_str(string, i, "\\n");
+            break;
+
+        case '\r':
+            bjson_dynstr_erase(string, i, 1);
+            bjson_dynstr_insert_str(string, i, "\\r");
+            break;
+
+        case '\t':
+            bjson_dynstr_erase(string, i, 1);
+            bjson_dynstr_insert_str(string, i, "\\t");
+            break;
+
+        // case '\u': // TODO
+            // ...
+            // break;
+        }
+    }
+}
+
+// TODO: Por enquanto se tiver um '\n' no nome da thing vai bugar, uma solução seria dar cat no nome também aqui nessa func. Na real que eu
+//       acho que uma solução melhor seria criar uma func pra substituir os chars de escape em uma string, ai eu chamo essa func quando for preciso
 void bjson_dynstr_cat_thing(bjson_dynstr *string, bjson_thing *thing)
 {
     switch (thing->type)
@@ -1117,14 +1162,17 @@ void bjson_dynstr_cat_thing(bjson_dynstr *string, bjson_thing *thing)
 
     case BJSON_STRING:
     {
-        // char *format = malloc(strlen(thing->value.string) + 3); // +3 means ['"' + '"' + '\0']
-        // sprintf(format, "\"%s\"", thing->value.string);
-        // bjson_dynstr_cat_str(string, format);
-        // free(format);
+        bjson_dynstr *value_string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
+        bjson_dynstr_cat_str(value_string, thing->value.string);
+
+        // Change the escape chars to their string representation, for example: '\n' -> "\\n" 
+        bjson_dynstr_convert_escape_chars(value_string);
 
         bjson_dynstr_cat_str(string, "\"");
-        bjson_dynstr_cat_str(string, thing->value.string);
+        bjson_dynstr_cat_dynstr(string, value_string);
         bjson_dynstr_cat_str(string, "\"");
+
+        bjson_dynstr_destroy(value_string);
     }
     break;
 
@@ -1161,6 +1209,7 @@ void bjson_dynstr_cat_thing(bjson_dynstr *string, bjson_thing *thing)
 }
 
 // TODO: Se pa que da pra dar uma refatorada nessa func reduzindo um pouco a quatidade de código repetido
+// TODO: Se pa que seria util essa func retornar um unsigned int com o número de buffers utilizados
 void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size, unsigned int n)
 {
     int current_buffer = 0;
@@ -1175,7 +1224,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
 
         // Push the root thing and it's iterator
         {
-            bjson_thing *thing_iterator = bjson_thing_create(); // TODO: Iterator que vai guardar quantas things já foram writadas em cada Object ou Array: GAMBIARRA ^^
+            bjson_thing *thing_iterator = bjson_thing_create(); // GAMBIARRA: Iterator that stores how many things were already written from each Object or Array
             bjson_thing_set_as_int(thing_iterator, 0);
 
             bjson_thing_stack_push(nested_things, thing);
@@ -1230,6 +1279,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                         // Add the name
                         if (top_thing->type == BJSON_OBJECT)
                         {
+                            // TODO: bjson_dynstr_convert_escape_chars(node->thing->name)
                             bjson_dynstr_cat_str(string, "\"");
                             bjson_dynstr_cat_str(string, node->thing->name);
                             bjson_dynstr_cat_str(string, "\": ");
@@ -1273,6 +1323,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                     // Add the name
                     if (top_thing->type == BJSON_OBJECT)
                     {
+                        // TODO: bjson_dynstr_convert_escape_chars(node->thing->name)
                         bjson_dynstr_cat_str(string, "\"");
                         bjson_dynstr_cat_str(string, node->thing->name);
                         bjson_dynstr_cat_str(string, "\": ");
@@ -1306,7 +1357,6 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                             bjson_dynstr_cat_str(string, " ");
                     }
 
-                    // TODO: Falta checar se precisa adicinar virgula antes do \n
                     // Add the closing of the Object or Array
                     if (top_thing->type == BJSON_OBJECT)
                         bjson_dynstr_cat_str(string, "}");
@@ -1325,8 +1375,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                             else
                                 second_top_thing_last_node = second_top_thing->value.array->things->start;
 
-                            for (; second_top_thing_last_node->next != NULL; second_top_thing_last_node = second_top_thing_last_node->next)
-                                ;
+                            for (; second_top_thing_last_node->next != NULL; second_top_thing_last_node = second_top_thing_last_node->next);
 
                             if (top_thing != second_top_thing_last_node->thing)
                                 bjson_dynstr_cat_str(string, ",");
@@ -1385,6 +1434,8 @@ void bjson_write_file(bjson_thing *thing, const char *path)
     for (int i = 0; i < BJSON_FILE_MAX_LINES; i++)
     {
         fputs(buffers[i], file);
+        fflush(file); // TODO: To tendo que dar flush porque aparentemente o buffer de IO ta enchendo e não ta printando o arquivo inteiro, tentar resolver isso de um jeito melhor
+
         free(buffers[i]);
     }
 }
