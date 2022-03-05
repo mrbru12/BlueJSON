@@ -8,10 +8,6 @@ https://lihautan.com/json-parser-with-javascript/
 */
 
 // TODOs:
-// * Fazer um sistema de checagem de erro com uma função tipo bjson_expect(const char *tokens). Dai, por exemplo, depois de encontrar
-//   o começo de um objeto '{' teria que ter um bjson_expect(""}"), ou seja, ele esperaria que tivesse uma '"' (significando o
-//   começo de uma string), ou um '}' (significando o final do objeto, que no caso seria um objeto vazio), os espaços em branco ' '
-//   a função vai ignorar. Como exemplo ver aquele site que checa se o JSON ta certo
 // * Precisa urgentemente dar uma refatorada em praticamente tudo
 // * Dar uma documentada boa em tudo
 // * Fazer uns benchmarks pra procurar lugares que daria pra dar uma otimizada melhor
@@ -20,10 +16,14 @@ https://lihautan.com/json-parser-with-javascript/
 // * Reduzir ao máximo o número de #includes
 // * Adicionar uma licença no começo desse arquivo
 // * Talvez no Array e no Object mudar os nomes dos getters e setters pra ..._find_get_...() e ..._find_set_...()
-// * Talvez olhar nos commits antigos no Github e pegar de volta alguns TODOs que eu tirei pq pensei que n ia mais precisar
 // * Seria legal mudar o design do projeto inteiro e fazer tudo estilo funções C, teria tipo fprintjson(FILE *file, ...)
 // * Talvez desencanar e deixar o BlueJSON sem checagem de erro
 // * Talvez fazer um sistema dinamico de ler arquivo lendo char por char
+// * Fazer benchmarks e otimizar várias partes do código que tão claramente super ineficientes
+// * Adicionar várias opções de customização, tipo colocar ou não uma nova linha ao entrar em um novo bloco; trocar as "skins" (char) usadas 
+//   em cada carácter especial; etc...
+// * Se não for mais ter error-checking, adicinar uma nota em algum lugar avisando que o espera-se que o JSON esteja correto: 
+//   "Because there is no error checking, the JSON data is expected to be syntactically errorless. If the JSON data is wrongly formed, unexpected behaviours might happen!"
 
 #ifndef BJSON_BLUEJSON_H
 #define BJSON_BLUEJSON_H
@@ -153,8 +153,7 @@ void bjson_write_file(bjson_thing *thing, const char *path);
 #define BJSON_FILE_MAX_LINE_SIZE 256
 #define BJSON_FILE_MAX_LINES 1024
 
-// TODO: Talvez mudar esse nome pra algo que possibilite um uso mais generalizado, tipo BJSON_DYNSTR_DEFAULT_INITIAL_SIZE
-#define BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER 256
+#define BJSON_DYNSTR_INITIAL_SIZE 256
 
 #define BJSON_WRITE_TAB_SIZE 2
 
@@ -657,44 +656,6 @@ void bjson_array_push_thing(bjson_array *array, bjson_thing *thing)
     bjson_thing_list_append(array->things, thing);
 }
 
-#ifdef BJSON_NO_ERROR_CHECKING
-
-int bjson_expect_is_char(char c, const char *expected_chars, unsigned int count)
-{
-    return 1;
-}
-
-int bjson_expect_is_number(char c)
-{
-    return 1;
-}
-
-#else
-
-int bjson_expect_is_char(char c, const char *expected_chars, unsigned int count)
-{
-    for (int i = 0; i < count; i++)
-    {
-        if (c == expected_chars[i])
-            return 1;
-    }
-
-    return 0;
-}
-
-int bjson_expect_is_number(char c)
-{
-    return isdigit(c);
-}
-
-#endif
-
-void bjson_panic(const char *msg)
-{
-    fprintf(stderr, "ERROR: %s\n", msg);
-    exit(1);
-}
-
 unsigned int bjson_strlen_in_quotes(const char *str)
 {
     int len = 0;
@@ -712,40 +673,34 @@ int bjson_parse_string(const char *string, char *buffer, unsigned int size)
     {
         if (string[string_i] == '\\')
         {
-            // TODO: Talvez abandonar a ideia de checar erros (ou pensar em outra maneira mais adequada) porque não da pra separar as funções direito
-            if (!bjson_expect_is_char(string[++string_i], "\"\\/bfnrtu", 9)) // TODO: Talvez fazer if (bjson_expect_is_...(...)) e colocar o panic no else em tudo
-                bjson_panic("Unexpected char somewhere!");
-            else
+            switch (string[++string_i])
             {
-                switch (string[string_i])
-                {
-                case 'b':
-                    buffer[buffer_i] = '\b';
-                    break;
+            case 'b':
+                buffer[buffer_i] = '\b';
+                break;
 
-                case 'f':
-                    buffer[buffer_i] = '\f';
-                    break;
+            case 'f':
+                buffer[buffer_i] = '\f';
+                break;
 
-                case 'n':
-                    buffer[buffer_i] = '\n';
-                    break;
+            case 'n':
+                buffer[buffer_i] = '\n';
+                break;
 
-                case 'r':
-                    buffer[buffer_i] = '\r';
-                    break;
+            case 'r':
+                buffer[buffer_i] = '\r';
+                break;
 
-                case 't':
-                    buffer[buffer_i] = '\t';
-                    break;
+            case 't':
+                buffer[buffer_i] = '\t';
+                break;
 
-                case 'u': // TODO: Isso representa um caracter unicode, então vai estar no formato \u seguido de 4 digitos que são o identificador do caractere
-                    // TODO: buffer[i - 1] = '\u1234';
-                    break;
+            case 'u': // TODO: Isso representa um caracter unicode, então vai estar no formato \u seguido de 4 digitos que são o identificador do caractere
+                // TODO: buffer[i - 1] = '\u1234';
+                break;
 
-                default:
-                    buffer[buffer_i] = string[string_i]; // The cases that left are not any special code and can be just copied
-                }
+            default:
+                buffer[buffer_i] = string[string_i]; // The cases that left are not any special code and can be just copied
             }
         }
         else
@@ -757,21 +712,16 @@ int bjson_parse_string(const char *string, char *buffer, unsigned int size)
     return string_i + 1;
 }
 
+// TODO: Precisa de uma boa refatorada nessa parte de números pra deixar mais claro o que ta acontecendo, apesar de estar bonitin *-*
 int bjson_parse_number(const char *number, double *buffer)
 {
-    // TODO: Precisa de uma boa refatorada nessa parte de números pra deixar mais claro o que ta acontecendo, apesar de estar bonitin *-*
-    // TODO: Precisa fazer mensagens de erro correspondentes pra cada tipo de erro e talvez mostrar mais infos nelas como a linha que deu erro
-
     int number_i = 0; // Number string iterator
 
     *buffer = 0.0;
     int is_number_negative = number[0] == '-'; // TODO: Talvez trocar isso pra: int number_signal = line[i] == '-' ? -1 : 1;
 
     if (is_number_negative)
-    {
-        if (!bjson_expect_is_number(number[++number_i])) // There must be at least a digit after the signal and before the fraction point '.'
-            bjson_panic("Unexpected char somewhere!");
-    }
+        number_i++;
 
     // Parse the integer part of the number
     int integer_start = number_i;
@@ -779,44 +729,22 @@ int bjson_parse_number(const char *number, double *buffer)
         *buffer += (double)(number[number_i] - 48) / pow(10.0, number_i - integer_start); // Generate the number after the floating point, this is needed to mirror it
     *buffer *= pow(10.0, number_i - integer_start - 1);                                   // Offset the mirrored number to the left side of the floating point
 
-    // TODO: Se pa que precisa fazer nesse estilo aqui em todos. Deve ter uma forma melhor de fazer mais eficientemente
-    if (!bjson_expect_is_char(number[number_i], ".eE", 3))
-    {
-        if (!bjson_expect_is_char(number[number_i], ",}] \n\0", 6))
-            bjson_panic("Unexpected char somewhere!");
-    }
-
     // Parse the fraction part of the number
     if (number[number_i] == '.')
     {
-        if (!bjson_expect_is_number(number[++number_i])) // There must be at least a digit after the fraction point '.'
-        {
-            bjson_panic("Unexpected char somewhere!");
-            // fprintf(stderr, "ERROR: Unexpected '%c' at line %d!\n", line[i], current_str + 1); // TODO: Exemplo de como seria um erro mais detalhado (que não funcionaria nessa func separada)
-        }
-
-        int fraction_start = number_i;
+        int fraction_start = ++number_i;
         for (; isdigit(number[number_i]); number_i++)
             *buffer += (number[number_i] - 48) / pow(10.0, number_i - fraction_start + 1); // Generate the fraction
-
-        if (!bjson_expect_is_char(number[number_i], "eE", 2))
-        {
-            if (!bjson_expect_is_char(number[number_i], ",}] \n\0", 6))
-                bjson_panic("Unexpected char somewhere!");
-        }
     }
 
     // Parse the exponent part of the number
     if (number[number_i] == 'e' || number[number_i] == 'E')
     {
         double exponent = 0.0;
-        int is_exponent_negative = 0; // TODO: Talvez trocar isso pra: int exponent_signal = line[i] == '-' ? -1 : 1;
+        int is_exponent_negative = number[++number_i] == '-'; // TODO: Talvez trocar isso pra: int exponent_signal = line[i] == '-' ? -1 : 1;
 
-        if (bjson_expect_is_char(number[++number_i], "+-", 2)) // The signal is optional after an 'e' or 'E'
-            is_exponent_negative = number[number_i++] == '-';
-
-        if (!bjson_expect_is_number(number[number_i])) // There must be at least a digit after 'e' or 'E'
-            bjson_panic("Unexpected char somewhere!");
+        if (is_exponent_negative)
+            number_i++;
 
         int exponent_start = number_i;
         for (; isdigit(number[number_i]); number_i++)
@@ -829,12 +757,7 @@ int bjson_parse_number(const char *number, double *buffer)
         *buffer *= pow(10.0, (double)exponent); // Multiply the number by the exponent of 10
     }
 
-    // TODO: Talvez esse expect possa ser generalizado pra todos os tokens tirando ele pra fora, lembrando que a ',' só
-    //       pode ser expected caso a thing esteja dentro de um object ou array, e se tiver uma ',' precisa ter outra thing depois
-    if (!bjson_expect_is_char(number[number_i], ",}] \n\0", 6))
-        bjson_panic("Unexpected char somewhere!");
-
-    if (is_number_negative) // TODO: Talvez seja legal eu começar a colocar ifs assim em 1 só linha, exemplo: if (is_number_negative) *buffer = -(*buffer);
+    if (is_number_negative)
         *buffer = -(*buffer);
 
     return number_i;
@@ -942,9 +865,6 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
             }
             else // Ignorable characters
             {
-                // if (!bjson_expect_is_char(line[i], ":, \n\0", 5))
-                //     bjson_panic("Unexpected char somewhere!");
-
                 i++;
                 continue;
             }
@@ -1151,8 +1071,6 @@ void bjson_dynstr_convert_escape_chars(bjson_dynstr *string)
     }
 }
 
-// TODO: Por enquanto se tiver um '\n' no nome da thing vai bugar, uma solução seria dar cat no nome também aqui nessa func. Na real que eu
-//       acho que uma solução melhor seria criar uma func pra substituir os chars de escape em uma string, ai eu chamo essa func quando for preciso
 void bjson_dynstr_cat_thing(bjson_dynstr *string, bjson_thing *thing)
 {
     switch (thing->type)
@@ -1162,7 +1080,7 @@ void bjson_dynstr_cat_thing(bjson_dynstr *string, bjson_thing *thing)
 
     case BJSON_STRING:
     {
-        bjson_dynstr *value_string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
+        bjson_dynstr *value_string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
         bjson_dynstr_cat_str(value_string, thing->value.string);
 
         // Change the escape chars to their string representation, for example: '\n' -> "\\n" 
@@ -1235,7 +1153,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
 
         // Print the start of the root Object or Array
         {
-            bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
+            bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
 
             // Add the opening of the Object or Array
             if (thing->type == BJSON_OBJECT)
@@ -1267,7 +1185,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                 {
                     // Print the start of the Object or Array
                     {
-                        bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
+                        bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
 
                         // Add the tabs
                         for (int tab_count = 0; tab_count < nested_depth; tab_count++)
@@ -1279,9 +1197,14 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                         // Add the name
                         if (top_thing->type == BJSON_OBJECT)
                         {
-                            // TODO: bjson_dynstr_convert_escape_chars(node->thing->name)
+                            bjson_dynstr *name_string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
+                            bjson_dynstr_cat_str(name_string, node->thing->name);
+
+                            // Change the escape chars to their string representation, for example: '\n' -> "\\n" 
+                            bjson_dynstr_convert_escape_chars(name_string);
+
                             bjson_dynstr_cat_str(string, "\"");
-                            bjson_dynstr_cat_str(string, node->thing->name);
+                            bjson_dynstr_cat_dynstr(string, name_string);
                             bjson_dynstr_cat_str(string, "\": ");
                         }
 
@@ -1311,7 +1234,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                 }
                 else // Print the Thing
                 {
-                    bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
+                    bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
 
                     // Add the tabs
                     for (int tab_count = 0; tab_count < nested_depth; tab_count++)
@@ -1323,9 +1246,14 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                     // Add the name
                     if (top_thing->type == BJSON_OBJECT)
                     {
-                        // TODO: bjson_dynstr_convert_escape_chars(node->thing->name)
+                        bjson_dynstr *name_string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
+                        bjson_dynstr_cat_str(name_string, node->thing->name);
+
+                        // Change the escape chars to their string representation, for example: '\n' -> "\\n" 
+                        bjson_dynstr_convert_escape_chars(name_string);
+
                         bjson_dynstr_cat_str(string, "\"");
-                        bjson_dynstr_cat_str(string, node->thing->name);
+                        bjson_dynstr_cat_dynstr(string, name_string);
                         bjson_dynstr_cat_str(string, "\": ");
                     }
 
@@ -1348,7 +1276,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
 
                 // Print the end of the Object or Array
                 {
-                    bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
+                    bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
 
                     // Add the tabs
                     for (int tab_count = 0; tab_count < nested_depth; tab_count++)
@@ -1409,7 +1337,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
     else // Print the Thing
     {
         // TODO: Talvez deixar as outras partes que printam juntinhas que nem ta aqui
-        bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_SIZE_AS_WRITE_BUFFER);
+        bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
         bjson_dynstr_cat_thing(string, thing);
         bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
         bjson_dynstr_destroy(string);
