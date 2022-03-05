@@ -1,6 +1,4 @@
-main.c
-main.cpp
-main.exe
-Example.json
-.vscode
 examples/
+main.c
+main.exe
+.vscode

@@ -20,9 +20,9 @@ https://lihautan.com/json-parser-with-javascript/
 // * Talvez desencanar e deixar o BlueJSON sem checagem de erro
 // * Talvez fazer um sistema dinamico de ler arquivo lendo char por char
 // * Fazer benchmarks e otimizar várias partes do código que tão claramente super ineficientes
-// * Adicionar várias opções de customização, tipo colocar ou não uma nova linha ao entrar em um novo bloco; trocar as "skins" (char) usadas 
+// * Adicionar várias opções de customização, tipo colocar ou não uma nova linha ao entrar em um novo bloco; trocar as "skins" (char) usadas
 //   em cada carácter especial; etc...
-// * Se não for mais ter error-checking, adicinar uma nota em algum lugar avisando que o espera-se que o JSON esteja correto: 
+// * Se não for mais ter error-checking, adicinar uma nota em algum lugar avisando que o espera-se que o JSON esteja correto:
 //   "Because there is no error checking, the JSON data is expected to be syntactically errorless. If the JSON data is wrongly formed, unexpected behaviours might happen!"
 
 #ifndef BJSON_BLUEJSON_H
@@ -400,8 +400,7 @@ void bjson_thing_list_append(bjson_thing_list *list, bjson_thing *thing)
 unsigned int bjson_thing_list_get_len(bjson_thing_list *list)
 {
     int len = 0;
-    for (bjson_thing_list_node *node = list->start; node != NULL; node = node->next, len++)
-        ;
+    for (bjson_thing_list_node *node = list->start; node != NULL; node = node->next, len++);
 
     return len;
 }
@@ -661,7 +660,7 @@ unsigned int bjson_strlen_in_quotes(const char *str)
     int len = 0;
     for (str++; !(str[len] == '\"' && *(str + (len - 1)) != '\\'); len++); // What a funky loop! O_O
     // Applying some mathematical logic, the loop condition could have been written as: str[len] != '\"' || *(str + (len - 1) == '\\'
-    
+
     return len;
 }
 
@@ -1004,7 +1003,7 @@ void bjson_dynstr_dump_to_buffers(bjson_dynstr *string, int *current_buffer, int
 void bjson_dynstr_erase(bjson_dynstr *string, unsigned int pos, unsigned int count)
 {
     strcpy(string->start + pos, string->start + pos + count);
-    string->len -= count;  
+    string->len -= count;
 }
 
 void bjson_dynstr_cat_str(bjson_dynstr *string, const char *str)
@@ -1013,7 +1012,7 @@ void bjson_dynstr_cat_str(bjson_dynstr *string, const char *str)
         bjson_dynstr_extend_to_fit(string, strlen(str));
 
     strcpy(string->start + string->len, str); // TODO: Esse string->start + string->len na strcat() é pra otimizar, fazer um benchmark depois pra ver como fica com e sem isso
-    string->len = strlen(string->start); 
+    string->len = strlen(string->start);
 }
 
 // TODO: Ta meio pesadinha essa func em termos de eficiencia, mas se pa que não tem problema porque ela não vai ser chamada muitas vezes
@@ -1064,7 +1063,7 @@ void bjson_dynstr_convert_escape_chars(bjson_dynstr *string)
             bjson_dynstr_insert_str(string, i, "\\t");
             break;
 
-        // case '\u': // TODO
+            // case '\u': // TODO
             // ...
             // break;
         }
@@ -1083,7 +1082,7 @@ void bjson_dynstr_cat_thing(bjson_dynstr *string, bjson_thing *thing)
         bjson_dynstr *value_string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
         bjson_dynstr_cat_str(value_string, thing->value.string);
 
-        // Change the escape chars to their string representation, for example: '\n' -> "\\n" 
+        // Change the escape chars to their string representation, for example: '\n' -> "\\n"
         bjson_dynstr_convert_escape_chars(value_string);
 
         bjson_dynstr_cat_str(string, "\"");
@@ -1200,7 +1199,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                             bjson_dynstr *name_string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
                             bjson_dynstr_cat_str(name_string, node->thing->name);
 
-                            // Change the escape chars to their string representation, for example: '\n' -> "\\n" 
+                            // Change the escape chars to their string representation, for example: '\n' -> "\\n"
                             bjson_dynstr_convert_escape_chars(name_string);
 
                             bjson_dynstr_cat_str(string, "\"");
@@ -1249,7 +1248,7 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
                         bjson_dynstr *name_string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
                         bjson_dynstr_cat_str(name_string, node->thing->name);
 
-                        // Change the escape chars to their string representation, for example: '\n' -> "\\n" 
+                        // Change the escape chars to their string representation, for example: '\n' -> "\\n"
                         bjson_dynstr_convert_escape_chars(name_string);
 
                         bjson_dynstr_cat_str(string, "\"");
