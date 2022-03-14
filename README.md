@@ -3,7 +3,8 @@
 ## Usage
 
 ```c
-// This macro must be defined once before including the header for the first time, to add all the definitions
+// This macro must be defined once before including the header for the first time
+// It will add all the definitions
 #define BJSON_IMPLEMENTATION
 
 // Then you can just include the header and start using all the functions
