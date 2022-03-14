@@ -7,7 +7,7 @@
 // It will add all the definitions
 #define BJSON_IMPLEMENTATION
 
-// Then you can just include the header and start using all the functions
+// Then you can just include the header and start using all the functions!
 #include <BlueJSON.h>
 ```
 * It is recommended that the file chosen for the "implementation" process is not a header file.
