@@ -674,32 +674,32 @@ int bjson_parse_string(const char *string, char *buffer, unsigned int size)
         {
             switch (string[++string_i])
             {
-            case 'b':
-                buffer[buffer_i] = '\b';
-                break;
+                case 'b':
+                    buffer[buffer_i] = '\b';
+                    break;
 
-            case 'f':
-                buffer[buffer_i] = '\f';
-                break;
+                case 'f':
+                    buffer[buffer_i] = '\f';
+                    break;
 
-            case 'n':
-                buffer[buffer_i] = '\n';
-                break;
+                case 'n':
+                    buffer[buffer_i] = '\n';
+                    break;
 
-            case 'r':
-                buffer[buffer_i] = '\r';
-                break;
+                case 'r':
+                    buffer[buffer_i] = '\r';
+                    break;
 
-            case 't':
-                buffer[buffer_i] = '\t';
-                break;
+                case 't':
+                    buffer[buffer_i] = '\t';
+                    break;
 
-            case 'u': // TODO: Isso representa um caracter unicode, então vai estar no formato \u seguido de 4 digitos que são o identificador do caractere
-                // TODO: buffer[i - 1] = '\u1234';
-                break;
+                case 'u': // TODO: Isso representa um caracter unicode, então vai estar no formato \u seguido de 4 digitos que são o identificador do caractere
+                    // TODO: buffer[i - 1] = '\u1234';
+                    break;
 
-            default:
-                buffer[buffer_i] = string[string_i]; // The cases that left are not any special code and can be just copied
+                default:
+                    buffer[buffer_i] = string[string_i]; // The cases that left are not any special code and can be just copied
             }
         }
         else
@@ -1038,30 +1038,30 @@ void bjson_dynstr_convert_escape_chars(bjson_dynstr *string)
     {
         switch (string->start[i])
         {
-        case '\b':
-            bjson_dynstr_erase(string, i, 1);
-            bjson_dynstr_insert_str(string, i, "\\b");
-            break;
+            case '\b':
+                bjson_dynstr_erase(string, i, 1);
+                bjson_dynstr_insert_str(string, i, "\\b");
+                break;
 
-        case '\f':
-            bjson_dynstr_erase(string, i, 1);
-            bjson_dynstr_insert_str(string, i, "\\f");
-            break;
+            case '\f':
+                bjson_dynstr_erase(string, i, 1);
+                bjson_dynstr_insert_str(string, i, "\\f");
+                break;
 
-        case '\n':
-            bjson_dynstr_erase(string, i, 1);
-            bjson_dynstr_insert_str(string, i, "\\n");
-            break;
+            case '\n':
+                bjson_dynstr_erase(string, i, 1);
+                bjson_dynstr_insert_str(string, i, "\\n");
+                break;
 
-        case '\r':
-            bjson_dynstr_erase(string, i, 1);
-            bjson_dynstr_insert_str(string, i, "\\r");
-            break;
+            case '\r':
+                bjson_dynstr_erase(string, i, 1);
+                bjson_dynstr_insert_str(string, i, "\\r");
+                break;
 
-        case '\t':
-            bjson_dynstr_erase(string, i, 1);
-            bjson_dynstr_insert_str(string, i, "\\t");
-            break;
+            case '\t':
+                bjson_dynstr_erase(string, i, 1);
+                bjson_dynstr_insert_str(string, i, "\\t");
+                break;
 
             // case '\u': // TODO
             // ...
@@ -1074,54 +1074,54 @@ void bjson_dynstr_cat_thing(bjson_dynstr *string, bjson_thing *thing)
 {
     switch (thing->type)
     {
-    case BJSON_NOTHING:
+        case BJSON_NOTHING:
+            break;
+
+        case BJSON_STRING:
+        {
+            bjson_dynstr *value_string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
+            bjson_dynstr_cat_str(value_string, thing->value.string);
+
+            // Change the escape chars to their string representation, for example: '\n' -> "\\n"
+            bjson_dynstr_convert_escape_chars(value_string);
+
+            bjson_dynstr_cat_str(string, "\"");
+            bjson_dynstr_cat_dynstr(string, value_string);
+            bjson_dynstr_cat_str(string, "\"");
+
+            bjson_dynstr_destroy(value_string);
+        }
         break;
 
-    case BJSON_STRING:
-    {
-        bjson_dynstr *value_string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
-        bjson_dynstr_cat_str(value_string, thing->value.string);
+        case BJSON_NUMBER:
+        {
+            char format[256]; // It's kinda sad and disappointing having to do it this way... but at least any number should fit inside this buffer
+            if (floor(thing->value.number) == thing->value.number)
+                snprintf(format, sizeof(format), "%d", (int)thing->value.number);
+            else
+                snprintf(format, sizeof(format), "%lf", thing->value.number);
 
-        // Change the escape chars to their string representation, for example: '\n' -> "\\n"
-        bjson_dynstr_convert_escape_chars(value_string);
-
-        bjson_dynstr_cat_str(string, "\"");
-        bjson_dynstr_cat_dynstr(string, value_string);
-        bjson_dynstr_cat_str(string, "\"");
-
-        bjson_dynstr_destroy(value_string);
-    }
-    break;
-
-    case BJSON_NUMBER:
-    {
-        char format[256]; // It's kinda sad and disappointing having to do it this way... but at least any number should fit inside this buffer
-        if (floor(thing->value.number) == thing->value.number)
-            snprintf(format, sizeof(format), "%d", (int)thing->value.number);
-        else
-            snprintf(format, sizeof(format), "%lf", thing->value.number);
-
-        bjson_dynstr_cat_str(string, format);
-    }
-    break;
-
-    case BJSON_OBJECT:
+            bjson_dynstr_cat_str(string, format);
+        }
         break;
 
-    case BJSON_ARRAY:
-        break;
+        case BJSON_OBJECT:
+            break;
 
-    case BJSON_TRUE:
-        bjson_dynstr_cat_str(string, "true");
-        break;
+        case BJSON_ARRAY:
+            break;
 
-    case BJSON_FALSE:
-        bjson_dynstr_cat_str(string, "false");
-        break;
+        case BJSON_TRUE:
+            bjson_dynstr_cat_str(string, "true");
+            break;
 
-    case BJSON_NULL:
-        bjson_dynstr_cat_str(string, "null");
-        break;
+        case BJSON_FALSE:
+            bjson_dynstr_cat_str(string, "false");
+            break;
+
+        case BJSON_NULL:
+            bjson_dynstr_cat_str(string, "null");
+            break;
     }
 }
 
@@ -1335,10 +1335,11 @@ void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size,
     }
     else // Print the Thing
     {
-        // TODO: Talvez deixar as outras partes que printam juntinhas que nem ta aqui
         bjson_dynstr *string = bjson_dynstr_create(BJSON_DYNSTR_INITIAL_SIZE);
         bjson_dynstr_cat_thing(string, thing);
+
         bjson_dynstr_dump_to_buffers(string, &current_buffer, &buffer_iterator, buffers, size, n);
+
         bjson_dynstr_destroy(string);
     }
 }
