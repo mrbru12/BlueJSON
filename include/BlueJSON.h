@@ -24,7 +24,6 @@ SOFTWARE.
 // * Precisa urgentemente dar uma refatorada em praticamente tudo
 // * Dar uma documentada boa em tudo
 // * Fazer uns benchmarks pra procurar lugares que daria pra dar uma otimizada melhor
-// * Talvez no Array e no Object mudar os nomes dos getters e setters pra ..._find_get_...() e ..._find_set_...()
 // * Talvez fazer um sistema dinamico de ler arquivo lendo char por char
 // * Fazer benchmarks e otimizar várias partes do código que tão claramente super ineficientes
 // * Adicionar várias opções de customização, tipo colocar ou não uma nova linha ao entrar em um novo bloco; trocar as "skins" (char) usadas
@@ -74,7 +73,6 @@ char *bjson_thing_get_name(const bjson_thing *thing, char *buffer, unsigned int 
 bjson_value_type bjson_thing_get_value_type(const bjson_thing *thing);
 // TODO: bjson_value bjson_thing_get_value(const bjson_thing *thing);
 
-// TODO: Fazer todos os getters tipo esses: com const
 char *bjson_thing_get_as_string(const bjson_thing *thing, char *buffer, unsigned int size);
 int bjson_thing_get_as_int(const bjson_thing *thing);
 float bjson_thing_get_as_float(const bjson_thing *thing);
@@ -100,16 +98,16 @@ void bjson_thing_set_as_null(bjson_thing *thing);
 bjson_object *bjson_object_create();
 void bjson_object_destroy(bjson_object *object);
 
-bjson_thing *bjson_object_get_thing(const bjson_object *object, const char *name);
-char *bjson_object_get_string(const bjson_object *object, const char *name, char *buffer, unsigned int size);
-int bjson_object_get_int(const bjson_object *object, const char *name);
-float bjson_object_get_float(const bjson_object *object, const char *name);
-double bjson_object_get_double(const bjson_object *object, const char *name);
-bjson_object *bjson_object_get_object(const bjson_object *object, const char *name);
-bjson_array *bjson_object_get_array(const bjson_object *object, const char *name);
-int bjson_object_is_true(const bjson_object *object, const char *name);
-int bjson_object_is_false(const bjson_object *object, const char *name);
-int bjson_object_is_null(const bjson_object *object, const char *name);
+bjson_thing *bjson_object_find_thing(const bjson_object *object, const char *name);
+char *bjson_object_find_string(const bjson_object *object, const char *name, char *buffer, unsigned int size);
+int bjson_object_find_int(const bjson_object *object, const char *name);
+float bjson_object_find_float(const bjson_object *object, const char *name);
+double bjson_object_find_double(const bjson_object *object, const char *name);
+bjson_object *bjson_object_find_object(const bjson_object *object, const char *name);
+bjson_array *bjson_object_find_array(const bjson_object *object, const char *name);
+int bjson_object_find_is_true(const bjson_object *object, const char *name);
+int bjson_object_find_is_false(const bjson_object *object, const char *name);
+int bjson_object_find_is_null(const bjson_object *object, const char *name);
 
 // Appends the specified thing to the end of the object things
 void bjson_object_push_thing(bjson_object *object, bjson_thing *thing);
@@ -117,16 +115,16 @@ void bjson_object_push_thing(bjson_object *object, bjson_thing *thing);
 bjson_array *bjson_array_create();
 void bjson_array_destroy(bjson_array *array);
 
-bjson_thing *bjson_array_get_thing(const bjson_array *array, unsigned int index);
-char *bjson_array_get_string(const bjson_array *array, unsigned int index, char *buffer, unsigned int size);
-int bjson_array_get_int(const bjson_array *array, unsigned int index);
-float bjson_array_get_float(const bjson_array *array, unsigned int index);
-double bjson_array_get_double(const bjson_array *array, unsigned int index);
-bjson_object *bjson_array_get_object(const bjson_array *array, unsigned int index);
-bjson_array *bjson_array_get_array(const bjson_array *array, unsigned int index);
-int bjson_array_is_true(const bjson_array *array, unsigned int index);
-int bjson_array_is_false(const bjson_array *array, unsigned int index);
-int bjson_array_is_null(const bjson_array *array, unsigned int index);
+bjson_thing *bjson_array_find_thing(const bjson_array *array, unsigned int index);
+char *bjson_array_find_string(const bjson_array *array, unsigned int index, char *buffer, unsigned int size);
+int bjson_array_find_int(const bjson_array *array, unsigned int index);
+float bjson_array_find_float(const bjson_array *array, unsigned int index);
+double bjson_array_find_double(const bjson_array *array, unsigned int index);
+bjson_object *bjson_array_find_object(const bjson_array *array, unsigned int index);
+bjson_array *bjson_array_find_array(const bjson_array *array, unsigned int index);
+int bjson_array_find_is_true(const bjson_array *array, unsigned int index);
+int bjson_array_find_is_false(const bjson_array *array, unsigned int index);
+int bjson_array_find_is_null(const bjson_array *array, unsigned int index);
 
 // Appends the specified thing to the end of the array things
 void bjson_array_push_thing(bjson_array *array, bjson_thing *thing);
@@ -413,7 +411,7 @@ unsigned int bjson_thing_list_get_len(bjson_thing_list *list)
     return len;
 }
 
-bjson_thing *bjson_thing_list_get_at(bjson_thing_list *list, unsigned int index)
+bjson_thing *bjson_thing_list_find_at(bjson_thing_list *list, unsigned int index)
 {
     bjson_thing_list_node *node = list->start;
     for (int i = 0; i < index; i++)
@@ -427,7 +425,7 @@ bjson_thing *bjson_thing_list_get_at(bjson_thing_list *list, unsigned int index)
     return node->thing;
 }
 
-bjson_thing *bjson_thing_list_get_by_name(bjson_thing_list *list, const char *name)
+bjson_thing *bjson_thing_list_find_by_name(bjson_thing_list *list, const char *name)
 {
     bjson_thing_list_node *node = list->start;
     while (node != NULL)
@@ -531,54 +529,54 @@ void bjson_object_destroy(bjson_object *object)
     free(object);
 }
 
-bjson_thing *bjson_object_get_thing(const bjson_object *object, const char *name)
+bjson_thing *bjson_object_find_thing(const bjson_object *object, const char *name)
 {
-    return bjson_thing_list_get_by_name(object->things, name);
+    return bjson_thing_list_find_by_name(object->things, name);
 }
 
-char *bjson_object_get_string(const bjson_object *object, const char *name, char *buffer, unsigned int size)
+char *bjson_object_find_string(const bjson_object *object, const char *name, char *buffer, unsigned int size)
 {
-    return bjson_thing_get_as_string(bjson_object_get_thing(object, name), buffer, size);
+    return bjson_thing_get_as_string(bjson_object_find_thing(object, name), buffer, size);
 }
 
-int bjson_object_get_int(const bjson_object *object, const char *name)
+int bjson_object_find_int(const bjson_object *object, const char *name)
 {
-    return (int)bjson_object_get_double(object, name);
+    return (int)bjson_object_find_double(object, name);
 }
 
-float bjson_object_get_float(const bjson_object *object, const char *name)
+float bjson_object_find_float(const bjson_object *object, const char *name)
 {
-    return (float)bjson_object_get_double(object, name);
+    return (float)bjson_object_find_double(object, name);
 }
 
-double bjson_object_get_double(const bjson_object *object, const char *name)
+double bjson_object_find_double(const bjson_object *object, const char *name)
 {
-    return bjson_thing_get_as_double(bjson_object_get_thing(object, name));
+    return bjson_thing_get_as_double(bjson_object_find_thing(object, name));
 }
 
-bjson_object *bjson_object_get_object(const bjson_object *object, const char *name)
+bjson_object *bjson_object_find_object(const bjson_object *object, const char *name)
 {
-    return bjson_thing_get_as_object(bjson_object_get_thing(object, name));
+    return bjson_thing_get_as_object(bjson_object_find_thing(object, name));
 }
 
-bjson_array *bjson_object_get_array(const bjson_object *object, const char *name)
+bjson_array *bjson_object_find_array(const bjson_object *object, const char *name)
 {
-    return bjson_thing_get_as_array(bjson_object_get_thing(object, name));
+    return bjson_thing_get_as_array(bjson_object_find_thing(object, name));
 }
 
-int bjson_object_is_true(const bjson_object *object, const char *name)
+int bjson_object_find_is_true(const bjson_object *object, const char *name)
 {
-    return bjson_thing_is_true(bjson_object_get_thing(object, name));
+    return bjson_thing_is_true(bjson_object_find_thing(object, name));
 }
 
-int bjson_object_is_false(const bjson_object *object, const char *name)
+int bjson_object_find_is_false(const bjson_object *object, const char *name)
 {
-    return bjson_thing_is_false(bjson_object_get_thing(object, name));
+    return bjson_thing_is_false(bjson_object_find_thing(object, name));
 }
 
-int bjson_object_is_null(const bjson_object *object, const char *name)
+int bjson_object_find_is_null(const bjson_object *object, const char *name)
 {
-    return bjson_thing_is_null(bjson_object_get_thing(object, name));
+    return bjson_thing_is_null(bjson_object_find_thing(object, name));
 }
 
 void bjson_object_push_thing(bjson_object *object, bjson_thing *thing)
@@ -608,54 +606,54 @@ void bjson_array_destroy(bjson_array *array)
     free(array);
 }
 
-bjson_thing *bjson_array_get_thing(const bjson_array *array, unsigned int index)
+bjson_thing *bjson_array_find_thing(const bjson_array *array, unsigned int index)
 {
-    return bjson_thing_list_get_at(array->things, index);
+    return bjson_thing_list_find_at(array->things, index);
 }
 
-char *bjson_array_get_string(const bjson_array *array, unsigned int index, char *buffer, unsigned int size)
+char *bjson_array_find_string(const bjson_array *array, unsigned int index, char *buffer, unsigned int size)
 {
-    return bjson_thing_get_as_string(bjson_array_get_thing(array, index), buffer, size);
+    return bjson_thing_get_as_string(bjson_array_find_thing(array, index), buffer, size);
 }
 
-int bjson_array_get_int(const bjson_array *array, unsigned int index)
+int bjson_array_find_int(const bjson_array *array, unsigned int index)
 {
-    return (int)bjson_array_get_double(array, index);
+    return (int)bjson_array_find_double(array, index);
 }
 
-float bjson_array_get_float(const bjson_array *array, unsigned int index)
+float bjson_array_find_float(const bjson_array *array, unsigned int index)
 {
-    return (float)bjson_array_get_double(array, index);
+    return (float)bjson_array_find_double(array, index);
 }
 
-double bjson_array_get_double(const bjson_array *array, unsigned int index)
+double bjson_array_find_double(const bjson_array *array, unsigned int index)
 {
-    return bjson_thing_get_as_double(bjson_array_get_thing(array, index));
+    return bjson_thing_get_as_double(bjson_array_find_thing(array, index));
 }
 
-bjson_object *bjson_array_get_object(const bjson_array *array, unsigned int index)
+bjson_object *bjson_array_find_object(const bjson_array *array, unsigned int index)
 {
-    return bjson_thing_get_as_object(bjson_array_get_thing(array, index));
+    return bjson_thing_get_as_object(bjson_array_find_thing(array, index));
 }
 
-bjson_array *bjson_array_get_array(const bjson_array *array, unsigned int index)
+bjson_array *bjson_array_find_array(const bjson_array *array, unsigned int index)
 {
-    return bjson_thing_get_as_array(bjson_array_get_thing(array, index));
+    return bjson_thing_get_as_array(bjson_array_find_thing(array, index));
 }
 
-int bjson_array_is_true(const bjson_array *array, unsigned int index)
+int bjson_array_find_is_true(const bjson_array *array, unsigned int index)
 {
-    return bjson_thing_is_true(bjson_array_get_thing(array, index));
+    return bjson_thing_is_true(bjson_array_find_thing(array, index));
 }
 
-int bjson_array_is_false(const bjson_array *array, unsigned int index)
+int bjson_array_find_is_false(const bjson_array *array, unsigned int index)
 {
-    return bjson_thing_is_false(bjson_array_get_thing(array, index));
+    return bjson_thing_is_false(bjson_array_find_thing(array, index));
 }
 
-int bjson_array_is_null(const bjson_array *array, unsigned int index)
+int bjson_array_find_is_null(const bjson_array *array, unsigned int index)
 {
-    return bjson_thing_is_null(bjson_array_get_thing(array, index));
+    return bjson_thing_is_null(bjson_array_find_thing(array, index));
 }
 
 void bjson_array_push_thing(bjson_array *array, bjson_thing *thing)
