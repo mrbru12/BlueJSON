@@ -1,13 +1,16 @@
 /*
 Copyright (c) 2022 Bruno Moretto Monegat
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
+
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,19 +24,16 @@ SOFTWARE.
 // * Precisa urgentemente dar uma refatorada em praticamente tudo
 // * Dar uma documentada boa em tudo
 // * Fazer uns benchmarks pra procurar lugares que daria pra dar uma otimizada melhor
-// * Criar um repo no github e colocar uma foto de um Blue Jay, também colocar alguma referência a Blue Jay Way. Talvez eu tenha que colocar
-//   créditos das imagens que eu usar
-// * Reduzir ao máximo o número de #includes
-// * Adicionar uma licença no começo desse arquivo
 // * Talvez no Array e no Object mudar os nomes dos getters e setters pra ..._find_get_...() e ..._find_set_...()
-// * Seria legal mudar o design do projeto inteiro e fazer tudo estilo funções C, teria tipo fprintjson(FILE *file, ...)
-// * Talvez desencanar e deixar o BlueJSON sem checagem de erro
 // * Talvez fazer um sistema dinamico de ler arquivo lendo char por char
 // * Fazer benchmarks e otimizar várias partes do código que tão claramente super ineficientes
 // * Adicionar várias opções de customização, tipo colocar ou não uma nova linha ao entrar em um novo bloco; trocar as "skins" (char) usadas
 //   em cada carácter especial; etc...
 // * Se não for mais ter error-checking, adicinar uma nota em algum lugar avisando que o espera-se que o JSON esteja correto:
 //   "Because there is no error checking, the JSON data is expected to be syntactically errorless. If the JSON data is wrongly formed, unexpected behaviours might happen!"
+// * Talvez tirar a licença do MIT e dar um jeito de deixar em public-domain. Ai na parte do readme que dizia que usava a licença do MIT colocar que é public-domain e colocar
+//   uma referenciazinha a Blue Jay Way
+// * Dar uma melhorada nos Quick Examples do README porque eles tão meio confusos e feios
 
 #ifndef BJSON_BLUEJSON_H
 #define BJSON_BLUEJSON_H
@@ -157,8 +157,6 @@ void bjson_write_file(bjson_thing *thing, const char *path);
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
-#include <math.h>
 
 #define BJSON_FILE_MAX_LINE_SIZE 256
 #define BJSON_FILE_MAX_LINES 1024
@@ -721,6 +719,21 @@ int bjson_parse_string(const char *string, char *buffer, unsigned int size)
     return string_i + 1;
 }
 
+int bjson_is_digit(char c)
+{
+    return c >= 48 && c <= 57;
+}
+
+double bjson_pow(double value, int exponent)
+{    
+    if (exponent > 0)
+        return value * bjson_pow(value, exponent - 1);
+    else if (exponent < 0)
+        return bjson_pow(value, exponent + 1) / value;
+    else
+        return 1;
+}
+
 // TODO: Precisa de uma boa refatorada nessa parte de números pra deixar mais claro o que ta acontecendo, apesar de estar bonitin *-*
 int bjson_parse_number(const char *number, double *buffer)
 {
@@ -734,16 +747,16 @@ int bjson_parse_number(const char *number, double *buffer)
 
     // Parse the integer part of the number
     int integer_start = number_i;
-    for (; isdigit(number[number_i]); number_i++)
-        *buffer += (double)(number[number_i] - 48) / pow(10.0, number_i - integer_start); // Generate the number after the floating point, this is needed to mirror it
-    *buffer *= pow(10.0, number_i - integer_start - 1);                                   // Offset the mirrored number to the left side of the floating point
+    for (; bjson_is_digit(number[number_i]); number_i++)
+        *buffer += (double)(number[number_i] - 48) / bjson_pow(10.0, number_i - integer_start); // Generate the number after the floating point, this is needed to mirror it
+    *buffer *= bjson_pow(10.0, number_i - integer_start - 1);                                   // Offset the mirrored number to the left side of the floating point
 
     // Parse the fraction part of the number
     if (number[number_i] == '.')
     {
         int fraction_start = ++number_i;
-        for (; isdigit(number[number_i]); number_i++)
-            *buffer += (number[number_i] - 48) / pow(10.0, number_i - fraction_start + 1); // Generate the fraction
+        for (; bjson_is_digit(number[number_i]); number_i++)
+            *buffer += (number[number_i] - 48) / bjson_pow(10.0, number_i - fraction_start + 1); // Generate the fraction
     }
 
     // Parse the exponent part of the number
@@ -756,14 +769,14 @@ int bjson_parse_number(const char *number, double *buffer)
             number_i++;
 
         int exponent_start = number_i;
-        for (; isdigit(number[number_i]); number_i++)
-            exponent += (double)(number[number_i] - 48) / pow(10.0, number_i - exponent_start); // Generate the exponent number after the floating point, this is needed to mirror it
-        exponent *= pow(10.0, number_i - exponent_start - 1);                                   // Offset the mirrored exponent number to the left side of the floating point
+        for (; bjson_is_digit(number[number_i]); number_i++)
+            exponent += (double)(number[number_i] - 48) / bjson_pow(10.0, number_i - exponent_start); // Generate the exponent number after the floating point, this is needed to mirror it
+        exponent *= bjson_pow(10.0, number_i - exponent_start - 1);                                   // Offset the mirrored exponent number to the left side of the floating point
 
         if (is_exponent_negative)
             exponent = -exponent;
 
-        *buffer *= pow(10.0, (double)exponent); // Multiply the number by the exponent of 10
+        *buffer *= bjson_pow(10.0, (double)exponent); // Multiply the number by the exponent of 10
     }
 
     if (is_number_negative)
@@ -866,7 +879,7 @@ bjson_thing *bjson_read_strings(const char *strs[], unsigned int n)
 
                 i += 4;
             }
-            else if (isdigit(line[i]) || line[i] == '-') // Number
+            else if (bjson_is_digit(line[i]) || line[i] == '-') // Number
             {
                 thing = bjson_thing_create();
                 thing->type = BJSON_NUMBER;
@@ -1106,7 +1119,7 @@ void bjson_dynstr_cat_thing(bjson_dynstr *string, bjson_thing *thing)
         case BJSON_NUMBER:
         {
             char format[256]; // It's kinda sad and disappointing having to do it this way... but at least any number should fit inside this buffer
-            if (floor(thing->value.number) == thing->value.number)
+            if ((int)thing->value.number == thing->value.number)
                 snprintf(format, sizeof(format), "%d", (int)thing->value.number);
             else
                 snprintf(format, sizeof(format), "%lf", thing->value.number);
