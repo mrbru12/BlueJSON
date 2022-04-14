@@ -23,16 +23,14 @@ SOFTWARE.
 // TODOs:
 // * Precisa urgentemente dar uma refatorada em praticamente tudo
 // * Dar uma documentada boa em tudo
-// * Fazer uns benchmarks pra procurar lugares que daria pra dar uma otimizada melhor
+// * Fazer uns benchmarks pra procurar lugares ineficientes que dariam pra dar uma otimizada melhor
 // * Talvez fazer um sistema dinamico de ler arquivo lendo char por char
-// * Fazer benchmarks e otimizar várias partes do código que tão claramente super ineficientes
 // * Adicionar várias opções de customização, tipo colocar ou não uma nova linha ao entrar em um novo bloco; trocar as "skins" (char) usadas
 //   em cada carácter especial; etc...
-// * Se não for mais ter error-checking, adicinar uma nota em algum lugar avisando que o espera-se que o JSON esteja correto:
-//   "Because there is no error checking, the JSON data is expected to be syntactically errorless. If the JSON data is wrongly formed, unexpected behaviours might happen!"
-// * Talvez tirar a licença do MIT e dar um jeito de deixar em public-domain. Ai na parte do readme que dizia que usava a licença do MIT colocar que é public-domain e colocar
-//   uma referenciazinha a Blue Jay Way
-// * Dar uma melhorada nos Quick Examples do README porque eles tão meio confusos e feios
+// * Dar uma melhorada nos Quick Examples do README porque eles tão meio confusos e feios (talvez tirar os exemplos de arquivos e deixar só o read e write normais)
+// * Adicionar as Docs na wiki do github (talvez deixar só as docs como comentarios nas funções mesmo)
+// * Pesquisar sobre serialization e renomear algumas funções do write pra nomes relacionados a serialization
+// * Acho que eu vou abandonar a possibilidade de fazer calls encadeadas de funções pra poder retornar códigos de erro em todas as funções (dai os 'is_true' e 'is_false' vão virar 'get_bool')
 
 #ifndef BJSON_BLUEJSON_H
 #define BJSON_BLUEJSON_H
@@ -55,7 +53,7 @@ typedef enum
     BJSON_ARRAY,
     BJSON_TRUE,
     BJSON_FALSE,
-    BJSON_NULL,
+    BJSON_NULL
 } bjson_value_type;
 
 typedef union
@@ -66,12 +64,20 @@ typedef union
     bjson_array *array;
 } bjson_value;
 
+typedef enum
+{
+    BJSON_OK = -1,
+    BJSON_ERROR_POINTER_IS_NULL,
+    BJSON_ERROR_WRONG_VALUE_TYPE,
+    BJSON_ERROR_NOT_FOUND,
+} bjson_error;
+
 bjson_thing *bjson_thing_create();
 void bjson_thing_destroy(bjson_thing *thing);
 
-char *bjson_thing_get_name(const bjson_thing *thing, char *buffer, unsigned int size);
-bjson_value_type bjson_thing_get_value_type(const bjson_thing *thing);
-// TODO: bjson_value bjson_thing_get_value(const bjson_thing *thing);
+bjson_error bjson_thing_get_name(const bjson_thing *thing, char *buffer, unsigned int size);
+bjson_error bjson_thing_get_value_type(const bjson_thing *thing, bjson_value_type *buffer);
+bjson_error bjson_thing_get_value(const bjson_thing *thing, bjson_value *buffer);
 
 char *bjson_thing_get_as_string(const bjson_thing *thing, char *buffer, unsigned int size);
 int bjson_thing_get_as_int(const bjson_thing *thing);
@@ -130,22 +136,21 @@ int bjson_array_find_is_null(const bjson_array *array, unsigned int index);
 void bjson_array_push_thing(bjson_array *array, bjson_thing *thing);
 
 // Parses the specified n strings
-// Returns the outer-most root bjson_thing, or NULL on error
 bjson_thing *bjson_read_strings(const char *strs[], unsigned int n);
 
 // Parses the specified string
-// Returns the outer-most root bjson_thing, or NULL on error
 bjson_thing *bjson_read_string(const char *str);
 
 // Parses the entire JSON file specified by the file path
-// Returns the outer-most root bjson_thing, or NULL on error
 bjson_thing *bjson_read_file(const char *path);
 
-// Writes the JSON structure among the n strings. All buffers are expected to be the same size
+// Writes the JSON data among the n buffers. All buffers are expected to be the same size
 void bjson_write_strings(bjson_thing *thing, char *buffers[], unsigned int size, unsigned int n);
 
+// Writes the JSON data to the buffer
 void bjson_write_string(bjson_thing *thing, char *buffer, unsigned int size);
 
+// Writes the JSON data to the file
 void bjson_write_file(bjson_thing *thing, const char *path);
 
 #endif
@@ -206,17 +211,47 @@ void bjson_thing_destroy_value(bjson_thing *thing)
     thing->type = BJSON_NOTHING;
 }
 
-char *bjson_thing_get_name(const bjson_thing *thing, char *buffer, unsigned int size)
+bjson_error bjson_thing_get_name(const bjson_thing *thing, char *buffer, unsigned int size)
 {
+    if (!thing)
+        return BJSON_ERROR_POINTER_IS_NULL;
+
+    if (!thing->name)
+        return BJSON_ERROR_POINTER_IS_NULL;
+
+    if (!buffer)
+        return BJSON_ERROR_POINTER_IS_NULL;
+
     strncpy(buffer, thing->name, size);
     buffer[size - 1] = '\0';
 
-    return buffer;
+    return BJSON_OK;
 }
 
-bjson_value_type bjson_thing_get_value_type(const bjson_thing *thing)
+bjson_error bjson_thing_get_value_type(const bjson_thing *thing, bjson_value_type *buffer)
 {
-    return thing->type;
+    if (!thing)
+        return BJSON_ERROR_POINTER_IS_NULL;
+
+    if (!buffer)
+        return BJSON_ERROR_POINTER_IS_NULL;
+
+    *buffer = thing->type;
+
+    return BJSON_OK;
+}
+
+bjson_error bjson_thing_get_value(const bjson_thing *thing, bjson_value *buffer)
+{
+    if (!thing)
+        return BJSON_ERROR_POINTER_IS_NULL;
+
+    if (!buffer)
+        return BJSON_ERROR_POINTER_IS_NULL;
+
+    *buffer = thing->value;
+
+    return BJSON_OK;
 }
 
 char *bjson_thing_get_as_string(const bjson_thing *thing, char *buffer, unsigned int size)
